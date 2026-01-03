@@ -418,11 +418,25 @@ function formatBytes(bytes: number) {
 }
 
 function formatPublishError(error: unknown) {
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = (error as { data?: unknown }).data
+    if (typeof data === 'string' && data.trim()) return data.trim()
+    if (
+      data &&
+      typeof data === 'object' &&
+      'message' in data &&
+      typeof (data as { message?: unknown }).message === 'string'
+    ) {
+      const message = (data as { message?: string }).message?.trim()
+      if (message) return message
+    }
+  }
   if (error instanceof Error) {
     const cleaned = error.message
       .replace(/\[CONVEX[^\]]*\]\s*/g, '')
       .replace(/\[Request ID:[^\]]*\]\s*/g, '')
       .replace(/^Server Error Called by client\s*/i, '')
+      .replace(/^ConvexError:\s*/i, '')
       .trim()
     if (cleaned && cleaned !== 'Server Error') return cleaned
   }
