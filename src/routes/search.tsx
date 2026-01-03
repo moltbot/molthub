@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAction } from 'convex/react'
 import { useState } from 'react'
 import { api } from '../../convex/_generated/api'
+import type { Doc } from '../../convex/_generated/dataModel'
 
 export const Route = createFileRoute('/search')({
   component: Search,
@@ -12,7 +13,7 @@ function Search() {
   const [query, setQuery] = useState('')
   const [approvedOnly, setApprovedOnly] = useState(true)
   const [results, setResults] = useState<
-    Array<{ skill: any; version: any; score: number }>
+    Array<{ skill: Doc<'skills'>; version: Doc<'skillVersions'> | null; score: number }>
   >([])
   const [isSearching, setIsSearching] = useState(false)
 
@@ -21,8 +22,12 @@ function Search() {
     if (!query.trim()) return
     setIsSearching(true)
     try {
-      const data = await searchSkills({ query, approvedOnly })
-      setResults(data as any)
+      const data = (await searchSkills({ query, approvedOnly })) as Array<{
+        skill: Doc<'skills'>
+        version: Doc<'skillVersions'> | null
+        score: number
+      }>
+      setResults(data)
     } finally {
       setIsSearching(false)
     }

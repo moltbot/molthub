@@ -1,11 +1,20 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
   "files": {
-    "ignore": ["node_modules", "dist", "coverage", "convex/_generated", ".tanstack", "public"]
+    "includes": [
+      "**",
+      "!**/.cta.json",
+      "!**/.vscode",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!**/convex/_generated",
+      "!**/src/routeTree.gen.ts",
+      "!**/.tanstack",
+      "!**/public"
+    ]
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

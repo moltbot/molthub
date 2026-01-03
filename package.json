@@ -11,7 +11,7 @@
     "coverage": "vitest run --coverage",
     "lint": "bun run lint:biome && bun run lint:oxlint",
     "lint:biome": "biome check .",
-    "lint:oxlint": "oxlint --type-aware --tsconfig ./tsconfig.json ./src ./convex",
+    "lint:oxlint": "oxlint --type-aware --tsconfig ./tsconfig.oxlint.json ./src ./convex",
     "format": "biome format --write ."
   },
   "dependencies": {

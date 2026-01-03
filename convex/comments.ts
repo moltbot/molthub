@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import { assertRole, requireUser } from './lib/access'
 
@@ -12,7 +13,7 @@ export const listBySkill = query({
       .order('desc')
       .take(limit)
 
-    const results = [] as Array<{ comment: any; user: any }>
+    const results: Array<{ comment: Doc<'comments'>; user: Doc<'users'> | null }> = []
     for (const comment of comments) {
       if (comment.softDeletedAt) continue
       const user = await ctx.db.get(comment.userId)

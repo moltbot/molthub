@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import { requireUser } from './lib/access'
 
@@ -59,7 +60,7 @@ export const listByUser = query({
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
       .order('desc')
       .take(limit)
-    const skills = [] as any[]
+    const skills: Doc<'skills'>[] = []
     for (const star of stars) {
       const skill = await ctx.db.get(star.skillId)
       if (skill) skills.push(skill)

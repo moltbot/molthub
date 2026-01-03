@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api } from '../../../convex/_generated/api'
+import type { Doc, Id } from '../../../convex/_generated/dataModel'
 
 export const Route = createFileRoute('/skills/$slug')({
   component: SkillDetail,
@@ -22,7 +23,7 @@ function SkillDetail() {
   const [readme, setReadme] = useState<string | null>(null)
   const [comment, setComment] = useState('')
   const [tagName, setTagName] = useState('latest')
-  const [tagVersionId, setTagVersionId] = useState<string | null>(null)
+  const [tagVersionId, setTagVersionId] = useState<Id<'skillVersions'> | ''>('')
 
   const skill = result?.skill
   const owner = result?.owner
@@ -41,8 +42,9 @@ function SkillDetail() {
     skill ? { skillId: skill._id, limit: 50 } : 'skip',
   )
 
-  const canManage =
-    Boolean(me && skill && (me._id === skill.ownerUserId || ['admin', 'moderator'].includes(me.role ?? '')))
+  const canManage = Boolean(
+    me && skill && (me._id === skill.ownerUserId || ['admin', 'moderator'].includes(me.role ?? '')),
+  )
 
   const versionById = new Map((versions ?? []).map((version) => [version._id, version]))
 
@@ -51,7 +53,7 @@ function SkillDetail() {
     void getReadme({ versionId: latestVersion._id }).then((data) => {
       setReadme(data.text)
     })
-  }, [latestVersion?._id, getReadme])
+  }, [latestVersion, getReadme])
 
   useEffect(() => {
     if (!tagVersionId && latestVersion) {
@@ -84,9 +86,7 @@ function SkillDetail() {
                 by <a href={`/u/${owner.handle}`}>@{owner.handle}</a>
               </div>
             ) : null}
-            {skill.badges.redactionApproved ? (
-              <div className="tag">Redaction approved</div>
-            ) : null}
+            {skill.badges.redactionApproved ? <div className="tag">Redaction approved</div> : null}
             {isAuthenticated ? (
               <button
                 className="btn"
@@ -102,9 +102,7 @@ function SkillDetail() {
               SKILL.md
             </h2>
             <div className="markdown">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {readme ?? 'Loading…'}
-              </ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{readme ?? 'Loading…'}</ReactMarkdown>
             </div>
           </div>
           <div className="card">
@@ -140,27 +138,33 @@ function SkillDetail() {
               {(comments ?? []).length === 0 ? (
                 <div className="stat">No comments yet.</div>
               ) : (
-                (comments ?? []).map((entry: any) => (
-                  <div key={entry.comment._id} className="stat" style={{ alignItems: 'flex-start' }}>
-                    <div>
-                      <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
-                      <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
+                (comments ?? []).map(
+                  (entry: { comment: Doc<'comments'>; user: Doc<'users'> | null }) => (
+                    <div
+                      key={entry.comment._id}
+                      className="stat"
+                      style={{ alignItems: 'flex-start' }}
+                    >
+                      <div>
+                        <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
+                        <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
+                      </div>
+                      {isAuthenticated &&
+                      me &&
+                      (me._id === entry.comment.userId ||
+                        me.role === 'admin' ||
+                        me.role === 'moderator') ? (
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={() => void removeComment({ commentId: entry.comment._id })}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
-                    {isAuthenticated &&
-                    me &&
-                    (me._id === entry.comment.userId ||
-                      me.role === 'admin' ||
-                      me.role === 'moderator') ? (
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() => void removeComment({ commentId: entry.comment._id })}
-                      >
-                        Delete
-                      </button>
-                    ) : null}
-                  </div>
-                ))
+                  ),
+                )
               )}
             </div>
           </div>
@@ -197,9 +201,7 @@ function SkillDetail() {
               {Object.entries(skill.tags ?? {}).map(([tag, versionId]) => (
                 <div key={tag} className="stat">
                   <strong>{tag}</strong>
-                  <span>
-                    {versionById.get(versionId)?.version ?? versionId}
-                  </span>
+                  <span>{versionById.get(versionId)?.version ?? versionId}</span>
                 </div>
               ))}
             </div>
@@ -215,7 +217,7 @@ function SkillDetail() {
                   if (!tagName.trim() || !tagVersionId) return
                   void updateTags({
                     skillId: skill._id,
-                    tags: [{ tag: tagName.trim(), versionId: tagVersionId as any }],
+                    tags: [{ tag: tagName.trim(), versionId: tagVersionId }],
                   })
                 }}
                 style={{ display: 'grid', gap: 10, marginTop: 10 }}
