@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process'
 import { mkdir, rm, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { stdin } from 'node:process'
@@ -28,10 +29,12 @@ import {
   sha256Hex,
   writeLockfile,
 } from './skills.js'
+import { buildCliAuthUrl, startLoopbackAuthServer } from './browserAuth.js'
 
 type GlobalOpts = {
   workdir: string
   dir: string
+  site: string
   registry: string
 }
 
@@ -40,26 +43,30 @@ type ResolveResult = {
   latestVersion: { version: string } | null
 }
 
-const DEFAULT_REGISTRY = 'https://clawdhub.com'
+const DEFAULT_SITE = 'https://clawdhub.com'
+const DEFAULT_REGISTRY = 'https://wry-manatee-359.convex.site'
 
 const program = new Command()
   .name('clawdhub')
   .description('ClawdHub CLI — install, update, search, and publish agent skills.')
   .option('--workdir <dir>', 'Working directory (default: cwd)')
   .option('--dir <dir>', 'Skills directory (relative to workdir, default: skills)')
-  .option('--registry <url>', 'Registry base URL')
+  .option('--site <url>', 'Site base URL (for browser login)')
+  .option('--registry <url>', 'Registry API base URL')
   .option('--no-input', 'Disable prompts')
   .showHelpAfterError()
   .showSuggestionAfterError()
-  .addHelpText('after', '\nEnv:\n  CLAWDHUB_REGISTRY\n')
+  .addHelpText('after', '\nEnv:\n  CLAWDHUB_SITE\n  CLAWDHUB_REGISTRY\n')
 
 program
   .command('login')
-  .description('Store API token (for publish)')
+  .description('Log in (opens browser or stores token)')
   .option('--token <token>', 'API token')
+  .option('--label <label>', 'Token label (browser flow only)', 'CLI token')
+  .option('--no-browser', 'Do not open browser (requires --token)')
   .action(async (options) => {
     const opts = resolveGlobalOpts()
-    await cmdLogin(opts, options.token)
+    await cmdLoginFlow(opts, options)
   })
 
 program
@@ -85,11 +92,13 @@ const auth = program
 
 auth
   .command('login')
-  .description('Store API token (for publish)')
+  .description('Log in (opens browser or stores token)')
   .option('--token <token>', 'API token')
+  .option('--label <label>', 'Token label (browser flow only)', 'CLI token')
+  .option('--no-browser', 'Do not open browser (requires --token)')
   .action(async (options) => {
     const opts = resolveGlobalOpts()
-    await cmdLogin(opts, options.token)
+    await cmdLoginFlow(opts, options)
   })
 
 auth
@@ -169,11 +178,41 @@ void program.parseAsync(process.argv).catch((error) => {
 })
 
 function resolveGlobalOpts(): GlobalOpts {
-  const raw = program.opts<{ workdir?: string; dir?: string; registry?: string }>()
+  const raw = program.opts<{ workdir?: string; dir?: string; site?: string; registry?: string }>()
   const workdir = resolve(raw.workdir ?? process.cwd())
   const dir = resolve(workdir, raw.dir ?? 'skills')
+  const site = raw.site ?? process.env.CLAWDHUB_SITE ?? DEFAULT_SITE
   const registry = raw.registry ?? process.env.CLAWDHUB_REGISTRY ?? DEFAULT_REGISTRY
-  return { workdir, dir, registry }
+  return { workdir, dir, site, registry }
+}
+
+async function cmdLoginFlow(
+  opts: GlobalOpts,
+  options: { token?: string; label?: string; browser?: boolean },
+) {
+  if (options.token) {
+    await cmdLogin(opts, options.token)
+    return
+  }
+
+  if (options.browser === false) {
+    fail('Token required (use --token or remove --no-browser)')
+  }
+
+  const label = String(options.label ?? 'CLI token').trim() || 'CLI token'
+  const receiver = await startLoopbackAuthServer()
+  const authUrl = buildCliAuthUrl({
+    siteUrl: opts.site,
+    redirectUri: receiver.redirectUri,
+    label,
+  })
+
+  console.log(`Opening browser: ${authUrl}`)
+  openInBrowser(authUrl)
+
+  const result = await receiver.waitForResult()
+  const registry = result.registry?.trim() || opts.registry
+  await cmdLogin({ ...opts, registry }, result.token)
 }
 
 async function cmdLogin(opts: GlobalOpts, tokenFlag?: string) {
@@ -230,15 +269,16 @@ async function cmdWhoami(opts: GlobalOpts) {
 async function cmdSearch(opts: GlobalOpts, query: string, limit?: number) {
   if (!query) fail('Query required')
 
+  const registry = await resolveRegistry(opts)
   const spinner = createSpinner('Searching')
   try {
-    const url = new URL(ApiRoutes.search, opts.registry)
+    const url = new URL(ApiRoutes.search, registry)
     url.searchParams.set('q', query)
     if (typeof limit === 'number' && Number.isFinite(limit)) {
       url.searchParams.set('limit', String(limit))
     }
     const result = await apiRequest(
-      opts.registry,
+      registry,
       { method: 'GET', url: url.toString() },
       ApiSearchResponseSchema,
     )
@@ -260,6 +300,7 @@ async function cmdInstall(opts: GlobalOpts, slug: string, versionFlag?: string, 
   const trimmed = slug.trim()
   if (!trimmed) fail('Slug required')
 
+  const registry = await resolveRegistry(opts)
   await mkdir(opts.dir, { recursive: true })
   const target = join(opts.dir, trimmed)
   if (!force) {
@@ -275,7 +316,7 @@ async function cmdInstall(opts: GlobalOpts, slug: string, versionFlag?: string, 
       versionFlag ??
       (
         await apiRequest(
-          opts.registry,
+          registry,
           { method: 'GET', path: `/api/skill?slug=${encodeURIComponent(trimmed)}` },
           ApiSkillMetaResponseSchema,
         )
@@ -284,7 +325,7 @@ async function cmdInstall(opts: GlobalOpts, slug: string, versionFlag?: string, 
     if (!resolvedVersion) fail('Could not resolve latest version')
 
     spinner.text = `Downloading ${trimmed}@${resolvedVersion}`
-    const zip = await downloadZip(opts.registry, { slug: trimmed, version: resolvedVersion })
+    const zip = await downloadZip(registry, { slug: trimmed, version: resolvedVersion })
     await extractZipToDir(zip, target)
 
     const lock = await readLockfile(opts.workdir)
@@ -315,6 +356,7 @@ async function cmdUpdate(
   const inputAllowed = options.input ?? globalFlags.input
   const allowPrompt = isInteractive() && inputAllowed !== false
 
+  const registry = await resolveRegistry(opts)
   const lock = await readLockfile(opts.workdir)
   const slugs = slug ? [slug] : Object.keys(lock.skills)
   if (slugs.length === 0) {
@@ -339,12 +381,12 @@ async function cmdUpdate(
 
       let resolveResult: ResolveResult
       if (localFingerprint) {
-        resolveResult = await resolveSkillVersion(opts.registry, entry, localFingerprint)
+        resolveResult = await resolveSkillVersion(registry, entry, localFingerprint)
       } else {
-        const url = new URL(ApiRoutes.skill, opts.registry)
+        const url = new URL(ApiRoutes.skill, registry)
         url.searchParams.set('slug', entry)
         const meta = await apiRequest(
-          opts.registry,
+          registry,
           { method: 'GET', url: url.toString() },
           ApiSkillMetaResponseSchema,
         )
@@ -399,7 +441,7 @@ async function cmdUpdate(
         spinner.start(`Updating ${entry} -> ${targetVersion}`)
       }
       await rm(target, { recursive: true, force: true })
-      const zip = await downloadZip(opts.registry, { slug: entry, version: targetVersion })
+      const zip = await downloadZip(registry, { slug: entry, version: targetVersion })
       await extractZipToDir(zip, target)
       lock.skills[entry] = { version: targetVersion, installedAt: Date.now() }
       spinner.succeed(`${entry}: updated -> ${targetVersion}`)
@@ -563,6 +605,11 @@ function titleCase(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+async function resolveRegistry(opts: GlobalOpts) {
+  const cfg = await readGlobalConfig()
+  return cfg?.registry ?? opts.registry
+}
+
 async function fileExists(path: string) {
   try {
     await stat(path)
@@ -610,6 +657,17 @@ async function promptConfirm(prompt: string) {
   const answer = await confirm({ message: prompt })
   if (isCancel(answer)) return false
   return Boolean(answer)
+}
+
+function openInBrowser(url: string) {
+  const args =
+    process.platform === 'darwin'
+      ? ['open', url]
+      : process.platform === 'win32'
+        ? ['cmd', '/c', 'start', '', url]
+        : ['xdg-open', url]
+  const child = spawn(args[0]!, args.slice(1), { stdio: 'ignore', detached: true })
+  child.unref()
 }
 
 function isInteractive() {
