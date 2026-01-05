@@ -3,6 +3,7 @@ import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { AppProviders } from '../components/AppProviders'
 import { ClientOnly } from '../components/ClientOnly'
+import { Footer } from '../components/Footer'
 import Header from '../components/Header'
 
 import appCss from '../styles.css?url'
@@ -45,8 +46,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <ClientOnly>
           <AppProviders>
-            <Header />
-            {children}
+            <div className="app-shell">
+              <Header />
+              {children}
+              <Footer />
+            </div>
             {import.meta.env.DEV ? (
               <TanStackDevtools
                 config={{

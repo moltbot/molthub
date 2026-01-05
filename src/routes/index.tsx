@@ -83,7 +83,7 @@ function Home() {
   }, [highlightedOnly, searchSkills, trimmedQuery])
 
   return (
-    <main className="app-shell">
+    <main>
       <section className={`hero${searchMode ? ' search-mode' : ''}`}>
         <div className="hero-inner">
           <div className="hero-copy fade-up" data-delay="1">
@@ -228,6 +228,11 @@ function Home() {
                   />
                 ))
               )}
+            </div>
+            <div className="section-cta">
+              <Link to="/skills" className="btn">
+                See all skills
+              </Link>
             </div>
           </section>
         </>

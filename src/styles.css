@@ -80,6 +80,59 @@ code {
   flex-direction: column;
 }
 
+.app-shell main {
+  flex: 1;
+}
+
+.site-footer {
+  padding: 0 24px 40px;
+}
+
+.site-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.site-footer-divider {
+  height: 1px;
+  background: var(--line);
+  opacity: 0.6;
+  margin: 18px 0 16px;
+}
+
+.site-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.site-footer-copy {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.site-footer-copy a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 107, 74, 0.32);
+  text-underline-offset: 3px;
+  transition:
+    color 0.2s ease,
+    text-decoration-color 0.2s ease;
+}
+
+.site-footer-copy a:hover {
+  color: var(--ink);
+  text-decoration-color: rgba(255, 107, 74, 0.6);
+}
+
+.section-cta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 .navbar {
   position: sticky;
   top: 0;
