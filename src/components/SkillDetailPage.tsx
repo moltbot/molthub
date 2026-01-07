@@ -325,10 +325,10 @@ export function SkillDetailPage({
             <h3 className="section-title" style={{ fontSize: '1.1rem', margin: 0 }}>
               Versions
             </h3>
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div className="version-list">
               {(versions ?? []).map((version) => (
-                <div key={version._id} className="stat" style={{ alignItems: 'flex-start' }}>
-                  <div>
+                <div key={version._id} className="version-row">
+                  <div className="version-info">
                     <div>
                       v{version.version} · {new Date(version.createdAt).toLocaleDateString()}
                       {version.changelogSource === 'auto' ? (
@@ -339,12 +339,14 @@ export function SkillDetailPage({
                       {version.changelog}
                     </div>
                   </div>
-                  <a
-                    className="btn"
-                    href={`${import.meta.env.VITE_CONVEX_SITE_URL}/api/download?slug=${skill.slug}&version=${version.version}`}
-                  >
-                    Zip
-                  </a>
+                  <div className="version-actions">
+                    <a
+                      className="btn version-zip"
+                      href={`${import.meta.env.VITE_CONVEX_SITE_URL}/api/download?slug=${skill.slug}&version=${version.version}`}
+                    >
+                      Zip
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>

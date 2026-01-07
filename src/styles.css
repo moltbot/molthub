@@ -1436,6 +1436,35 @@ code {
   font-size: 0.9rem;
 }
 
+.version-list {
+  display: grid;
+  gap: 14px;
+}
+
+.version-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.version-info {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.version-actions {
+  display: grid;
+  align-items: center;
+}
+
+.version-zip {
+  justify-self: end;
+}
+
 [data-theme="dark"] .diff-pill-added {
   color: #72f0d3;
 }
