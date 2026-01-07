@@ -63,3 +63,13 @@ export async function downloadZip(registry: string, args: { slug: string; versio
     { retries: 2 },
   )
 }
+
+export async function listSkills(
+  registry: string,
+  args?: { batch?: string; limit?: number },
+) {
+  const url = new URL(ApiRoutes.skillsList, registry)
+  if (args?.batch) url.searchParams.set('batch', args.batch)
+  if (args?.limit) url.searchParams.set('limit', String(args.limit))
+  return apiRequest(registry, { method: 'GET', url: url.toString() })
+}

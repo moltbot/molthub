@@ -10,6 +10,7 @@ import {
   cliUploadUrlHttp,
   cliWhoamiHttp,
   getSkillHttp,
+  listSkillsHttp,
   resolveSkillVersionHttp,
   searchSkillsHttp,
 } from './httpApi'
@@ -28,6 +29,12 @@ http.route({
   path: ApiRoutes.search,
   method: 'GET',
   handler: searchSkillsHttp,
+})
+
+http.route({
+  path: ApiRoutes.skillsList,
+  method: 'GET',
+  handler: listSkillsHttp,
 })
 
 http.route({

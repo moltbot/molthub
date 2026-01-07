@@ -1,5 +1,6 @@
 export const ApiRoutes = {
   download: '/api/download',
+  skillsList: '/api/skills',
   search: '/api/search',
   skill: '/api/skill',
   skillResolve: '/api/skill/resolve',

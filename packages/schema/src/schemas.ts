@@ -43,6 +43,19 @@ export const ApiSearchResponseSchema = type({
   }).array(),
 })
 
+export const ApiSkillListResponseSchema = type({
+  skills: type({
+    slug: 'string',
+    displayName: 'string',
+    summary: 'string|null?',
+    tags: 'unknown',
+    stats: 'unknown',
+    batch: 'string|null?',
+    createdAt: 'number',
+    updatedAt: 'number',
+  }).array(),
+})
+
 export const ApiSkillMetaResponseSchema = type({
   latestVersion: type({
     version: 'string',

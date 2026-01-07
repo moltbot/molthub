@@ -67,6 +67,42 @@ async function searchSkillsHandler(ctx: ActionCtx, request: Request) {
 
 export const searchSkillsHttp = httpAction(searchSkillsHandler)
 
+async function listSkillsHandler(ctx: ActionCtx, request: Request) {
+  const url = new URL(request.url)
+  const batchParam = url.searchParams.get('batch')?.trim()
+  const batch = batchParam && batchParam.length > 0 ? batchParam : undefined
+  const limit = toOptionalNumber(url.searchParams.get('limit'))
+
+  const skills = (await ctx.runQuery(api.skills.list, {
+    batch,
+    limit,
+  })) as Array<{
+    slug: string
+    displayName: string
+    summary?: string | null
+    tags: Record<string, string>
+    stats: unknown
+    batch?: string | null
+    createdAt: number
+    updatedAt: number
+  }>
+
+  return json({
+    skills: skills.map((skill) => ({
+      slug: skill.slug,
+      displayName: skill.displayName,
+      summary: skill.summary ?? null,
+      tags: skill.tags,
+      stats: skill.stats,
+      batch: skill.batch ?? null,
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt,
+    })),
+  })
+}
+
+export const listSkillsHttp = httpAction(listSkillsHandler)
+
 async function getSkillHandler(ctx: ActionCtx, request: Request) {
   const url = new URL(request.url)
   const slug = url.searchParams.get('slug')?.trim().toLowerCase()
@@ -293,6 +329,7 @@ export const __test = {
 
 export const __handlers = {
   searchSkillsHandler,
+  listSkillsHandler,
   getSkillHandler,
   resolveSkillVersionHandler,
   cliWhoamiHandler,
