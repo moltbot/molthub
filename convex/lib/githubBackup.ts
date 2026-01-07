@@ -1,8 +1,8 @@
 'use node'
 
 import { createPrivateKey, createSign } from 'node:crypto'
-import type { ActionCtx } from '../_generated/server'
 import type { Id } from '../_generated/dataModel'
+import type { ActionCtx } from '../_generated/server'
 
 const GITHUB_API = 'https://api.github.com'
 const DEFAULT_REPO = 'clawdbot/skills'
@@ -436,5 +436,7 @@ function fromBase64(value: string) {
 }
 
 function isNotFoundError(error: unknown) {
-  return error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))
+  return (
+    error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))
+  )
 }
