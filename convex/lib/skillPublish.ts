@@ -139,8 +139,8 @@ export async function publishVersionForUser(
       publishedAt: Date.now(),
     })
   } catch (error) {
-    console.error('GitHub backup failed', error)
-    throw new ConvexError('GitHub backup failed. Please try again.')
+    console.error('GitHub backup failed (will retry via cron)', error)
+    // Don't throw - backup will be retried by cron job
   }
 
   const publishResult = (await ctx.runMutation(internal.skills.insertVersion, {
