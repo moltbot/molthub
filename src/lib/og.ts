@@ -16,7 +16,7 @@ type SkillMeta = {
 
 const DEFAULT_SITE = 'https://clawdhub.com'
 const DEFAULT_DESCRIPTION = 'ClawdHub — a fast skill registry for agents, with vector search.'
-const OG_SKILL_IMAGE_LAYOUT_VERSION = '3'
+const OG_SKILL_IMAGE_LAYOUT_VERSION = '4'
 
 export function getSiteUrl() {
   return import.meta.env.VITE_SITE_URL ?? DEFAULT_SITE

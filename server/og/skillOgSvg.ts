@@ -89,7 +89,7 @@ export function buildSkillOgSvg(params: SkillOgSvgParams) {
   const cardR = 34
 
   const titleLines = wrapText(rawTitle, 22, 2)
-  const descLines = wrapText(rawDescription, 52, 3)
+  const descLines = wrapText(rawDescription, 42, 3)
 
   const titleFontSize = titleLines.length > 1 || rawTitle.length > 24 ? 72 : 80
   const titleY = titleLines.length > 1 ? 258 : 280
