@@ -564,7 +564,7 @@ async function parseMultipartPublish(
     version: payload.version,
     changelog: typeof payload.changelog === 'string' ? payload.changelog : '',
     tags: Array.isArray(payload.tags) ? payload.tags : undefined,
-    source: payload.source,
+    ...(payload.source ? { source: payload.source } : {}),
     files,
     ...(payload.forkOf === undefined ? {} : { forkOf: payload.forkOf }),
   }

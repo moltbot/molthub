@@ -17,8 +17,10 @@ import { Route as ImportRouteImport } from './routes/import'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SoulsIndexRouteImport } from './routes/souls/index'
 import { Route as SkillsIndexRouteImport } from './routes/skills/index'
 import { Route as UHandleRouteImport } from './routes/u/$handle'
+import { Route as SoulsSlugRouteImport } from './routes/souls/$slug'
 import { Route as SkillsSlugRouteImport } from './routes/skills/$slug'
 import { Route as CliAuthRouteImport } from './routes/cli/auth'
 import { Route as OwnerSlugRouteImport } from './routes/$owner/$slug'
@@ -63,6 +65,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SoulsIndexRoute = SoulsIndexRouteImport.update({
+  id: '/souls/',
+  path: '/souls/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SkillsIndexRoute = SkillsIndexRouteImport.update({
   id: '/skills/',
   path: '/skills/',
@@ -71,6 +78,11 @@ const SkillsIndexRoute = SkillsIndexRouteImport.update({
 const UHandleRoute = UHandleRouteImport.update({
   id: '/u/$handle',
   path: '/u/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SoulsSlugRoute = SoulsSlugRouteImport.update({
+  id: '/souls/$slug',
+  path: '/souls/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsSlugRoute = SkillsSlugRouteImport.update({
@@ -93,47 +105,53 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
-  '/search': typeof SearchRoute
   '/import': typeof ImportRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/stars': typeof StarsRoute
   '/upload': typeof UploadRoute
   '/$owner/$slug': typeof OwnerSlugRoute
   '/cli/auth': typeof CliAuthRoute
   '/skills/$slug': typeof SkillsSlugRoute
+  '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/skills': typeof SkillsIndexRoute
+  '/souls': typeof SoulsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
-  '/search': typeof SearchRoute
   '/import': typeof ImportRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/stars': typeof StarsRoute
   '/upload': typeof UploadRoute
   '/$owner/$slug': typeof OwnerSlugRoute
   '/cli/auth': typeof CliAuthRoute
   '/skills/$slug': typeof SkillsSlugRoute
+  '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/skills': typeof SkillsIndexRoute
+  '/souls': typeof SoulsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
-  '/search': typeof SearchRoute
   '/import': typeof ImportRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/stars': typeof StarsRoute
   '/upload': typeof UploadRoute
   '/$owner/$slug': typeof OwnerSlugRoute
   '/cli/auth': typeof CliAuthRoute
   '/skills/$slug': typeof SkillsSlugRoute
+  '/souls/$slug': typeof SoulsSlugRoute
   '/u/$handle': typeof UHandleRoute
   '/skills/': typeof SkillsIndexRoute
+  '/souls/': typeof SoulsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,62 +159,70 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/dashboard'
-    | '/search'
     | '/import'
+    | '/search'
     | '/settings'
     | '/stars'
     | '/upload'
     | '/$owner/$slug'
     | '/cli/auth'
     | '/skills/$slug'
+    | '/souls/$slug'
     | '/u/$handle'
     | '/skills'
+    | '/souls'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/dashboard'
-    | '/search'
     | '/import'
+    | '/search'
     | '/settings'
     | '/stars'
     | '/upload'
     | '/$owner/$slug'
     | '/cli/auth'
     | '/skills/$slug'
+    | '/souls/$slug'
     | '/u/$handle'
     | '/skills'
+    | '/souls'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/dashboard'
-    | '/search'
     | '/import'
+    | '/search'
     | '/settings'
     | '/stars'
     | '/upload'
     | '/$owner/$slug'
     | '/cli/auth'
     | '/skills/$slug'
+    | '/souls/$slug'
     | '/u/$handle'
     | '/skills/'
+    | '/souls/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   DashboardRoute: typeof DashboardRoute
-  SearchRoute: typeof SearchRoute
   ImportRoute: typeof ImportRoute
+  SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   StarsRoute: typeof StarsRoute
   UploadRoute: typeof UploadRoute
   OwnerSlugRoute: typeof OwnerSlugRoute
   CliAuthRoute: typeof CliAuthRoute
   SkillsSlugRoute: typeof SkillsSlugRoute
+  SoulsSlugRoute: typeof SoulsSlugRoute
   UHandleRoute: typeof UHandleRoute
   SkillsIndexRoute: typeof SkillsIndexRoute
+  SoulsIndexRoute: typeof SoulsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -257,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/souls/': {
+      id: '/souls/'
+      path: '/souls'
+      fullPath: '/souls'
+      preLoaderRoute: typeof SoulsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/skills/': {
       id: '/skills/'
       path: '/skills'
@@ -269,6 +302,13 @@ declare module '@tanstack/react-router' {
       path: '/u/$handle'
       fullPath: '/u/$handle'
       preLoaderRoute: typeof UHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/souls/$slug': {
+      id: '/souls/$slug'
+      path: '/souls/$slug'
+      fullPath: '/souls/$slug'
+      preLoaderRoute: typeof SoulsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills/$slug': {
@@ -299,26 +339,29 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   DashboardRoute: DashboardRoute,
-  SearchRoute: SearchRoute,
   ImportRoute: ImportRoute,
+  SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   StarsRoute: StarsRoute,
   UploadRoute: UploadRoute,
   OwnerSlugRoute: OwnerSlugRoute,
   CliAuthRoute: CliAuthRoute,
   SkillsSlugRoute: SkillsSlugRoute,
+  SoulsSlugRoute: SoulsSlugRoute,
   UHandleRoute: UHandleRoute,
   SkillsIndexRoute: SkillsIndexRoute,
+  SoulsIndexRoute: SoulsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

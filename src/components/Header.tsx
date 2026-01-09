@@ -5,7 +5,7 @@ import { Menu, Monitor, Moon, Sun } from 'lucide-react'
 import { useMemo, useRef } from 'react'
 import { api } from '../../convex/_generated/api'
 import { gravatarUrl } from '../lib/gravatar'
-import { getSiteMode, getSiteName } from '../lib/site'
+import { getClawdHubSiteUrl, getSiteMode, getSiteName, getSoulHubSiteUrl } from '../lib/site'
 import { applyTheme, useThemeMode } from '../lib/theme'
 import { startThemeTransition } from '../lib/theme-transition'
 import {
@@ -26,6 +26,8 @@ export default function Header() {
   const siteMode = getSiteMode()
   const siteName = useMemo(() => getSiteName(siteMode), [siteMode])
   const isSoulMode = siteMode === 'souls'
+  const soulHubUrl = getSoulHubSiteUrl()
+  const clawdHubUrl = getClawdHubSiteUrl()
 
   const avatar = me?.image ?? (me?.email ? gravatarUrl(me.email) : undefined)
   const handle = me?.handle ?? me?.displayName ?? 'user'
@@ -55,6 +57,7 @@ export default function Header() {
           <span className="brand-name">{siteName}</span>
         </Link>
         <nav className="nav-links">
+          {isSoulMode ? <a href={clawdHubUrl}>ClawdHub</a> : <a href={soulHubUrl}>SoulHub</a>}
           <Link
             to={isSoulMode ? '/souls' : '/skills'}
             search={
@@ -90,6 +93,13 @@ export default function Header() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  {isSoulMode ? (
+                    <a href={clawdHubUrl}>ClawdHub</a>
+                  ) : (
+                    <a href={soulHubUrl}>SoulHub</a>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
                     to={isSoulMode ? '/souls' : '/skills'}

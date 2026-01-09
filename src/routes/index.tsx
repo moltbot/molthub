@@ -272,6 +272,7 @@ function SoulHubHome() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchMode, setSearchMode] = useState(Boolean(search.q))
   const searchRequest = useRef(0)
+  const seedEnsuredRef = useRef(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const trimmedQuery = useMemo(() => query.trim(), [query])
   const hasQuery = trimmedQuery.length > 0

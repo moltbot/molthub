@@ -1,9 +1,16 @@
 export const EMBEDDING_MODEL = 'text-embedding-3-small'
 export const EMBEDDING_DIMENSIONS = 1536
 
+function emptyEmbedding() {
+  return Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0)
+}
+
 export async function generateEmbedding(text: string) {
   const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
+  if (!apiKey) {
+    console.warn('OPENAI_API_KEY is not configured; using zero embeddings')
+    return emptyEmbedding()
+  }
 
   const response = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',

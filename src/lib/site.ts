@@ -9,7 +9,26 @@ export function getClawdHubSiteUrl() {
 }
 
 export function getSoulHubSiteUrl() {
-  return import.meta.env.VITE_SOULHUB_SITE_URL ?? DEFAULT_SOULHUB_SITE_URL
+  const explicit = import.meta.env.VITE_SOULHUB_SITE_URL
+  if (explicit) return explicit
+
+  const siteUrl = import.meta.env.VITE_SITE_URL
+  if (siteUrl) {
+    try {
+      const url = new URL(siteUrl)
+      if (
+        url.hostname === 'localhost' ||
+        url.hostname === '127.0.0.1' ||
+        url.hostname === '0.0.0.0'
+      ) {
+        return url.origin
+      }
+    } catch {
+      // ignore invalid URLs, fall through to default
+    }
+  }
+
+  return DEFAULT_SOULHUB_SITE_URL
 }
 
 export function getSoulHubHost() {

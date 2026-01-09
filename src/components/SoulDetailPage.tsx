@@ -134,7 +134,7 @@ export function SoulDetailPage({ slug }: SoulDetailPageProps) {
         </div>
 
         <div className="card">
-          <div className="skill-readme">
+          <div className="skill-readme markdown">
             {readmeContent ? (
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{readmeContent}</ReactMarkdown>
             ) : (

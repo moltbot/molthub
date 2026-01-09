@@ -70,6 +70,7 @@ export function Upload() {
   const changelogRequestRef = useRef(0)
   const changelogKeyRef = useRef<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const isSubmitting = status !== null
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -276,7 +277,11 @@ export function Upload() {
 
     for (const file of files) {
       const uploadUrl = await generateUploadUrl()
-      const path = (file.webkitRelativePath || file.name).replace(/^\.\//, '')
+      const rawPath = (file.webkitRelativePath || file.name).replace(/^\.\//, '')
+      const path =
+        stripRoot && rawPath.startsWith(`${stripRoot}/`)
+          ? rawPath.slice(stripRoot.length + 1)
+          : rawPath
       const sha256 = await hashFile(file)
       const stored = await uploadFile(uploadUrl, file)
       uploaded.push({
@@ -387,6 +392,7 @@ export function Upload() {
               ref={fileInputRef}
               className="upload-input"
               id="upload-files"
+              data-testid="upload-input"
               type="file"
               multiple
               onChange={(event) => {
@@ -465,7 +471,11 @@ export function Upload() {
             </div>
           ) : null}
           {status ? <div className="stat">{status}</div> : null}
-          <button className="btn btn-primary" type="submit" disabled={!validation.ready}>
+          <button
+            className="btn btn-primary"
+            type="submit"
+            disabled={!validation.ready || isSubmitting}
+          >
             Publish {contentLabel}
           </button>
           {hasAttempted && !validation.ready ? (

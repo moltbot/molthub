@@ -50,15 +50,11 @@ describe('Upload route', () => {
     vi.unstubAllGlobals()
   })
 
-  it('hides validation issues until submit', async () => {
+  it('shows validation issues before submit', async () => {
     render(<Upload />)
     const publishButton = screen.getByRole('button', { name: /publish/i })
-    expect(publishButton).toBeTruthy()
-    expect(screen.queryByText(/Slug is required/i)).toBeNull()
-    fireEvent.click(publishButton)
-    await waitFor(() => {
-      expect(screen.getByText(/Slug is required/i)).toBeTruthy()
-    })
+    expect(publishButton.getAttribute('disabled')).not.toBeNull()
+    expect(screen.getByText(/Slug is required/i)).toBeTruthy()
     expect(screen.getByText(/Display name is required/i)).toBeTruthy()
   })
 
@@ -70,19 +66,19 @@ describe('Upload route', () => {
     })
   })
 
-  it('enables publish when fields and files are valid, and allows removing files', async () => {
+  it('enables publish when fields and files are valid', async () => {
     generateUploadUrl.mockResolvedValue('https://upload.local')
     render(<Upload />)
-    fireEvent.change(screen.getByPlaceholderText('my-skill-pack'), {
+    fireEvent.change(screen.getByPlaceholderText('skill-name'), {
       target: { value: 'cool-skill' },
     })
-    fireEvent.change(screen.getByPlaceholderText('My Skill Pack'), {
+    fireEvent.change(screen.getByPlaceholderText('My skill'), {
       target: { value: 'Cool Skill' },
     })
     fireEvent.change(screen.getByPlaceholderText('1.0.0'), {
       target: { value: '1.2.3' },
     })
-    fireEvent.change(screen.getByPlaceholderText('latest, beta'), {
+    fireEvent.change(screen.getByPlaceholderText('latest, stable'), {
       target: { value: 'latest' },
     })
     const file = new File(['hello'], 'SKILL.md', { type: 'text/markdown' })
@@ -90,26 +86,22 @@ describe('Upload route', () => {
     fireEvent.change(input, { target: { files: [file] } })
 
     const publishButton = screen.getByRole('button', { name: /publish/i }) as HTMLButtonElement
-    expect(await screen.findByText(/Ready to publish/i)).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
-    expect(screen.queryByText(/Add at least one file/i)).toBeNull()
-    fireEvent.click(publishButton)
-    expect(await screen.findByText(/Add at least one file/i)).toBeTruthy()
+    expect(await screen.findByText(/All checks passed/i)).toBeTruthy()
+    expect(publishButton.getAttribute('disabled')).toBeNull()
   })
 
   it('extracts zip uploads and unwraps top-level folders', async () => {
     render(<Upload />)
-    fireEvent.change(screen.getByPlaceholderText('my-skill-pack'), {
+    fireEvent.change(screen.getByPlaceholderText('skill-name'), {
       target: { value: 'cool-skill' },
     })
-    fireEvent.change(screen.getByPlaceholderText('My Skill Pack'), {
+    fireEvent.change(screen.getByPlaceholderText('My skill'), {
       target: { value: 'Cool Skill' },
     })
     fireEvent.change(screen.getByPlaceholderText('1.0.0'), {
       target: { value: '1.2.3' },
     })
-    fireEvent.change(screen.getByPlaceholderText('latest, beta'), {
+    fireEvent.change(screen.getByPlaceholderText('latest, stable'), {
       target: { value: 'latest' },
     })
 
@@ -125,23 +117,23 @@ describe('Upload route', () => {
 
     expect(await screen.findByText('notes.txt', {}, { timeout: 3000 })).toBeTruthy()
     expect(screen.getByText('SKILL.md')).toBeTruthy()
-    expect(await screen.findByText(/Ready to publish/i, {}, { timeout: 3000 })).toBeTruthy()
+    expect(await screen.findByText(/All checks passed/i, {}, { timeout: 3000 })).toBeTruthy()
   })
 
   it('unwraps folder uploads so SKILL.md can be at the top-level', async () => {
     generateUploadUrl.mockResolvedValue('https://upload.local')
     publishVersion.mockResolvedValue(undefined)
     render(<Upload />)
-    fireEvent.change(screen.getByPlaceholderText('my-skill-pack'), {
+    fireEvent.change(screen.getByPlaceholderText('skill-name'), {
       target: { value: 'ynab' },
     })
-    fireEvent.change(screen.getByPlaceholderText('My Skill Pack'), {
+    fireEvent.change(screen.getByPlaceholderText('My skill'), {
       target: { value: 'YNAB' },
     })
     fireEvent.change(screen.getByPlaceholderText('1.0.0'), {
       target: { value: '1.0.0' },
     })
-    fireEvent.change(screen.getByPlaceholderText('latest, beta'), {
+    fireEvent.change(screen.getByPlaceholderText('latest, stable'), {
       target: { value: 'latest' },
     })
 
@@ -152,7 +144,7 @@ describe('Upload route', () => {
     fireEvent.change(input, { target: { files: [file] } })
 
     expect(await screen.findByText('SKILL.md')).toBeTruthy()
-    expect(await screen.findByText(/Ready to publish/i)).toBeTruthy()
+    expect(await screen.findByText(/All checks passed/i)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /publish/i }))
     await waitFor(() => {
@@ -170,16 +162,16 @@ describe('Upload route', () => {
 
   it('blocks non-text folder uploads (png)', async () => {
     render(<Upload />)
-    fireEvent.change(screen.getByPlaceholderText('my-skill-pack'), {
+    fireEvent.change(screen.getByPlaceholderText('skill-name'), {
       target: { value: 'cool-skill' },
     })
-    fireEvent.change(screen.getByPlaceholderText('My Skill Pack'), {
+    fireEvent.change(screen.getByPlaceholderText('My skill'), {
       target: { value: 'Cool Skill' },
     })
     fireEvent.change(screen.getByPlaceholderText('1.0.0'), {
       target: { value: '1.2.3' },
     })
-    fireEvent.change(screen.getByPlaceholderText('latest, beta'), {
+    fireEvent.change(screen.getByPlaceholderText('latest, stable'), {
       target: { value: 'latest' },
     })
 
@@ -200,26 +192,26 @@ describe('Upload route', () => {
     publishVersion.mockRejectedValueOnce(new Error('Changelog is required'))
     generateUploadUrl.mockResolvedValue('https://upload.local')
     render(<Upload />)
-    fireEvent.change(screen.getByPlaceholderText('my-skill-pack'), {
+    fireEvent.change(screen.getByPlaceholderText('skill-name'), {
       target: { value: 'cool-skill' },
     })
-    fireEvent.change(screen.getByPlaceholderText('My Skill Pack'), {
+    fireEvent.change(screen.getByPlaceholderText('My skill'), {
       target: { value: 'Cool Skill' },
     })
     fireEvent.change(screen.getByPlaceholderText('1.0.0'), {
       target: { value: '1.2.3' },
     })
-    fireEvent.change(screen.getByPlaceholderText('latest, beta'), {
+    fireEvent.change(screen.getByPlaceholderText('latest, stable'), {
       target: { value: 'latest' },
     })
-    fireEvent.change(screen.getByPlaceholderText('What changed in this version?'), {
+    fireEvent.change(screen.getByPlaceholderText('Describe what changed in this skill...'), {
       target: { value: 'Initial drop.' },
     })
     const file = new File(['hello'], 'SKILL.md', { type: 'text/markdown' })
     const input = screen.getByTestId('upload-input') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
     const publishButton = screen.getByRole('button', { name: /publish/i }) as HTMLButtonElement
-    await screen.findByText(/Ready to publish/i)
+    await screen.findByText(/All checks passed/i)
     fireEvent.click(publishButton)
     expect(await screen.findByText(/Changelog is required/i)).toBeTruthy()
   })

@@ -1,7 +1,7 @@
 import { ConvexError } from 'convex/values'
 import semver from 'semver'
-import { internal } from '../_generated/api'
-import type { Id } from '../_generated/dataModel'
+import { api, internal } from '../_generated/api'
+import type { Doc, Id } from '../_generated/dataModel'
 import type { ActionCtx } from '../_generated/server'
 import { generateEmbedding } from './embeddings'
 import {
@@ -16,6 +16,34 @@ import {
 import { generateSoulChangelogForPublish } from './soulChangelog'
 
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024
+
+const MAX_SUMMARY_LENGTH = 160
+
+function deriveSoulSummary(readmeText: string) {
+  const lines = readmeText.split(/\r?\n/)
+  let inFrontmatter = false
+  for (const raw of lines) {
+    const trimmed = raw.trim()
+    if (!trimmed) continue
+    if (!inFrontmatter && trimmed === '---') {
+      inFrontmatter = true
+      continue
+    }
+    if (inFrontmatter) {
+      if (trimmed === '---') {
+        inFrontmatter = false
+      }
+      continue
+    }
+    const cleaned = trimmed.replace(/^#+\s*/, '')
+    if (!cleaned) continue
+    if (cleaned.length > MAX_SUMMARY_LENGTH) {
+      return `${cleaned.slice(0, MAX_SUMMARY_LENGTH - 3).trimEnd()}...`
+    }
+    return cleaned
+  }
+  return undefined
+}
 
 export type PublishResult = {
   soulId: Id<'souls'>
@@ -90,6 +118,7 @@ export async function publishSoulVersionForUser(
 
   const readmeText = await fetchText(ctx, readmeFile.storageId)
   const frontmatter = parseFrontmatter(readmeText)
+  const summary = getFrontmatterValue(frontmatter, 'description') ?? deriveSoulSummary(readmeText)
   const metadata = mergeSourceIntoMetadata(getFrontmatterMetadata(frontmatter), args.source)
 
   const embeddingText = buildEmbeddingText({
@@ -138,15 +167,19 @@ export async function publishSoulVersionForUser(
       frontmatter,
       metadata,
     },
+    summary,
     embedding,
   })) as PublishResult
+
+  const owner = (await ctx.runQuery(api.users.getById, { userId })) as Doc<'users'> | null
+  const ownerHandle = owner?.handle ?? owner?.name ?? userId
 
   void ctx.scheduler
     .runAfter(0, internal.githubSoulBackupsNode.backupSoulForPublishInternal, {
       slug,
       version,
       displayName,
-      ownerHandle: userId,
+      ownerHandle,
       files: sanitizedFiles,
       publishedAt: Date.now(),
     })

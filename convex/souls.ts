@@ -345,6 +345,7 @@ export const insertVersion = internalMutation({
     changelogSource: v.optional(v.union(v.literal('auto'), v.literal('user'))),
     tags: v.optional(v.array(v.string())),
     fingerprint: v.string(),
+    summary: v.optional(v.string()),
     files: v.array(
       v.object({
         path: v.string(),
@@ -376,7 +377,7 @@ export const insertVersion = internalMutation({
 
     const now = Date.now()
     if (!soul) {
-      const summary = getFrontmatterValue(args.parsed.frontmatter, 'description')
+      const summary = args.summary ?? getFrontmatterValue(args.parsed.frontmatter, 'description')
       const soulId = await ctx.db.insert('souls', {
         slug: args.slug,
         displayName: args.displayName,
@@ -430,7 +431,8 @@ export const insertVersion = internalMutation({
 
     await ctx.db.patch(soul._id, {
       displayName: args.displayName,
-      summary: getFrontmatterValue(args.parsed.frontmatter, 'description') ?? soul.summary,
+      summary:
+        args.summary ?? getFrontmatterValue(args.parsed.frontmatter, 'description') ?? soul.summary,
       latestVersionId: versionId,
       tags: nextTags,
       stats: { ...soul.stats, versions: soul.stats.versions + 1 },
