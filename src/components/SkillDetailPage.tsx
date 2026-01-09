@@ -30,6 +30,7 @@ export function SkillDetailPage({
   const setBatch = useMutation(api.skills.setBatch)
   const getReadme = useAction(api.skills.getReadme)
   const [readme, setReadme] = useState<string | null>(null)
+  const [readmeError, setReadmeError] = useState<string | null>(null)
   const [comment, setComment] = useState('')
   const [tagName, setTagName] = useState('latest')
   const [tagVersionId, setTagVersionId] = useState<Id<'skillVersions'> | ''>('')
@@ -107,11 +108,18 @@ export function SkillDetailPage({
   useEffect(() => {
     if (!latestVersion) return
     setReadme(null)
+    setReadmeError(null)
     let cancelled = false
-    void getReadme({ versionId: latestVersion._id }).then((data) => {
-      if (cancelled) return
-      setReadme(data.text)
-    })
+    void getReadme({ versionId: latestVersion._id })
+      .then((data) => {
+        if (cancelled) return
+        setReadme(data.text)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setReadmeError(error instanceof Error ? error.message : 'Failed to load README')
+        setReadme(null)
+      })
     return () => {
       cancelled = true
     }
@@ -383,9 +391,13 @@ export function SkillDetailPage({
                   SKILL.md
                 </h2>
                 <div className="markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {readmeContent ?? 'Loading…'}
-                  </ReactMarkdown>
+                  {readmeContent ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{readmeContent}</ReactMarkdown>
+                  ) : readmeError ? (
+                    <div className="stat">Failed to load SKILL.md: {readmeError}</div>
+                  ) : (
+                    <div>Loading…</div>
+                  )}
                 </div>
               </div>
               <div className="file-list">

@@ -158,7 +158,7 @@ export async function publishVersionForUser(
   })) as PublishResult
 
   const owner = (await ctx.runQuery(api.users.getById, { userId })) as Doc<'users'> | null
-  const ownerHandle = owner?.handle ?? owner?.name ?? userId
+  const ownerHandle = owner?.handle ?? owner?.displayName ?? owner?.name ?? 'unknown'
 
   void ctx.scheduler
     .runAfter(0, internal.githubBackupsNode.backupSkillForPublishInternal, {
