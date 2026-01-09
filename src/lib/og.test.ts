@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildSkillMeta, fetchSkillMeta } from './og'
+import { buildSkillMeta, buildSoulMeta, fetchSkillMeta, fetchSoulMeta } from './og'
 
 describe('og helpers', () => {
   afterEach(() => {
@@ -27,6 +27,25 @@ describe('og helpers', () => {
     expect(meta.image).not.toContain('description=')
   })
 
+  it('builds soul metadata with summary', () => {
+    const meta = buildSoulMeta({
+      slug: 'north-star',
+      owner: 'someone',
+      displayName: 'North Star',
+      summary: 'Personal north star notes.',
+      version: '0.1.0',
+    })
+    expect(meta.title).toBe('North Star — SoulHub')
+    expect(meta.description).toBe('Personal north star notes.')
+    expect(meta.url).toContain('/souls/north-star')
+    expect(meta.owner).toBe('someone')
+    expect(meta.image).toContain('/og/soul.png?')
+    expect(meta.image).toContain('v=1')
+    expect(meta.image).toContain('slug=north-star')
+    expect(meta.image).toContain('owner=someone')
+    expect(meta.image).toContain('version=0.1.0')
+  })
+
   it('uses defaults when owner and summary are missing', () => {
     const meta = buildSkillMeta({ slug: 'parser' })
     expect(meta.title).toBe('parser — ClawdHub')
@@ -34,6 +53,15 @@ describe('og helpers', () => {
     expect(meta.url).toContain('/skills/parser')
     expect(meta.owner).toBeNull()
     expect(meta.image).toContain('slug=parser')
+  })
+
+  it('uses soul defaults when owner and summary are missing', () => {
+    const meta = buildSoulMeta({ slug: 'signal' })
+    expect(meta.title).toBe('signal — SoulHub')
+    expect(meta.description).toMatch(/SoulHub — the home for SOUL.md/i)
+    expect(meta.url).toContain('/souls/signal')
+    expect(meta.owner).toBeNull()
+    expect(meta.image).toContain('slug=signal')
   })
 
   it('truncates long descriptions', () => {
@@ -63,6 +91,26 @@ describe('og helpers', () => {
     })
   })
 
+  it('fetches soul metadata when response is ok', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        soul: { displayName: 'North Star', summary: 'Signal' },
+        owner: { handle: 'steipete' },
+        latestVersion: { version: '0.1.0' },
+      }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const meta = await fetchSoulMeta('north-star')
+    expect(meta).toEqual({
+      displayName: 'North Star',
+      summary: 'Signal',
+      owner: 'steipete',
+      version: '0.1.0',
+    })
+  })
+
   it('returns null when response is not ok', async () => {
     const fetchMock = vi.fn(async () => ({ ok: false }))
     vi.stubGlobal('fetch', fetchMock)
@@ -78,6 +126,16 @@ describe('og helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const meta = await fetchSkillMeta('weather')
+    expect(meta).toBeNull()
+  })
+
+  it('returns null when soul fetch throws', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('network')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const meta = await fetchSoulMeta('north-star')
     expect(meta).toBeNull()
   })
 })

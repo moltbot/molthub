@@ -3,6 +3,7 @@ import { useAction, useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import semver from 'semver'
 import { api } from '../../convex/_generated/api'
+import { getSiteMode } from '../lib/site'
 import { expandFiles } from '../lib/uploadFiles'
 import {
   formatBytes,
@@ -25,10 +26,35 @@ export const Route = createFileRoute('/upload')({
 export function Upload() {
   const { isAuthenticated } = useConvexAuth()
   const { updateSlug } = useSearch({ from: '/upload' })
+  const siteMode = getSiteMode()
+  const isSoulMode = siteMode === 'souls'
+  const requiredFileLabel = isSoulMode ? 'SOUL.md' : 'SKILL.md'
+  const contentLabel = isSoulMode ? 'soul' : 'skill'
+
   const generateUploadUrl = useMutation(api.uploads.generateUploadUrl)
-  const publishVersion = useAction(api.skills.publishVersion)
-  const generateChangelogPreview = useAction(api.skills.generateChangelogPreview)
-  const existingSkill = useQuery(api.skills.getBySlug, updateSlug ? { slug: updateSlug } : 'skip')
+  const publishVersion = useAction(
+    isSoulMode ? api.souls.publishVersion : api.skills.publishVersion,
+  )
+  const generateChangelogPreview = useAction(
+    isSoulMode ? api.souls.generateChangelogPreview : api.skills.generateChangelogPreview,
+  )
+  const existingSkill = useQuery(
+    api.skills.getBySlug,
+    !isSoulMode && updateSlug ? { slug: updateSlug } : 'skip',
+  )
+  const existingSoul = useQuery(
+    api.souls.getBySlug,
+    isSoulMode && updateSlug ? { slug: updateSlug } : 'skip',
+  )
+  const existing = (isSoulMode ? existingSoul : existingSkill) as
+    | {
+        skill?: { slug: string; displayName: string }
+        soul?: { slug: string; displayName: string }
+        latestVersion?: { version: string }
+      }
+    | null
+    | undefined
+
   const [hasAttempted, setHasAttempted] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [slug, setSlug] = useState(updateSlug ?? '')
@@ -71,13 +97,13 @@ export function Upload() {
       }),
     [files, stripRoot],
   )
-  const hasSkillFile = useMemo(
+  const hasRequiredFile = useMemo(
     () =>
       normalizedPaths.some((path) => {
         const lower = path.trim().toLowerCase()
-        return lower === 'skill.md' || lower === 'skills.md'
+        return isSoulMode ? lower === 'soul.md' : lower === 'skill.md' || lower === 'skills.md'
       }),
-    [normalizedPaths],
+    [isSoulMode, normalizedPaths],
   )
   const sizeLabel = totalBytes ? formatBytes(totalBytes) : '0 B'
   const trimmedSlug = slug.trim()
@@ -85,38 +111,40 @@ export function Upload() {
   const trimmedChangelog = changelog.trim()
 
   useEffect(() => {
-    if (!existingSkill?.skill || !existingSkill?.latestVersion) return
-    setSlug(existingSkill.skill.slug)
-    setDisplayName(existingSkill.skill.displayName)
-    const nextVersion = semver.inc(existingSkill.latestVersion.version, 'patch')
+    if (!existing?.latestVersion || (!existing?.skill && !existing?.soul)) return
+    const name = existing.skill?.displayName ?? existing.soul?.displayName
+    const nextSlug = existing.skill?.slug ?? existing.soul?.slug
+    if (nextSlug) setSlug(nextSlug)
+    if (name) setDisplayName(name)
+    const nextVersion = semver.inc(existing.latestVersion.version, 'patch')
     if (nextVersion) setVersion(nextVersion)
-  }, [existingSkill])
+  }, [existing])
 
   useEffect(() => {
     if (changelogTouchedRef.current) return
     if (trimmedChangelog) return
     if (!trimmedSlug || !SLUG_PATTERN.test(trimmedSlug)) return
     if (!semver.valid(version)) return
-    if (!hasSkillFile) return
+    if (!hasRequiredFile) return
     if (files.length === 0) return
 
-    const skillIndex = normalizedPaths.findIndex((path) => {
+    const requiredIndex = normalizedPaths.findIndex((path) => {
       const lower = path.trim().toLowerCase()
-      return lower === 'skill.md' || lower === 'skills.md'
+      return isSoulMode ? lower === 'soul.md' : lower === 'skill.md' || lower === 'skills.md'
     })
-    if (skillIndex < 0) return
+    if (requiredIndex < 0) return
 
-    const skillFile = files[skillIndex]
-    if (!skillFile) return
+    const requiredFile = files[requiredIndex]
+    if (!requiredFile) return
 
-    const key = `${trimmedSlug}:${version}:${skillFile.size}:${skillFile.lastModified}:${normalizedPaths.length}`
+    const key = `${trimmedSlug}:${version}:${requiredFile.size}:${requiredFile.lastModified}:${normalizedPaths.length}`
     if (changelogKeyRef.current === key) return
     changelogKeyRef.current = key
 
     const requestId = ++changelogRequestRef.current
     setChangelogStatus('loading')
 
-    void readText(skillFile)
+    void readText(requiredFile)
       .then((text) => {
         if (changelogRequestRef.current !== requestId) return null
         return generateChangelogPreview({
@@ -140,7 +168,8 @@ export function Upload() {
   }, [
     files,
     generateChangelogPreview,
-    hasSkillFile,
+    hasRequiredFile,
+    isSoulMode,
     normalizedPaths,
     trimmedChangelog,
     trimmedSlug,
@@ -173,8 +202,8 @@ export function Upload() {
     if (files.length === 0) {
       issues.push('Add at least one file.')
     }
-    if (!hasSkillFile) {
-      issues.push('SKILL.md is required.')
+    if (!hasRequiredFile) {
+      issues.push(`${requiredFileLabel} is required.`)
     }
     const invalidFiles = files.filter((file) => !isTextFile(file))
     if (invalidFiles.length > 0) {
@@ -192,7 +221,16 @@ export function Upload() {
       issues,
       ready: issues.length === 0,
     }
-  }, [trimmedSlug, trimmedName, version, parsedTags.length, files, hasSkillFile, totalBytes])
+  }, [
+    trimmedSlug,
+    trimmedName,
+    version,
+    parsedTags.length,
+    files,
+    hasRequiredFile,
+    totalBytes,
+    requiredFileLabel,
+  ])
 
   useEffect(() => {
     if (!fileInputRef.current) return
@@ -203,7 +241,7 @@ export function Upload() {
   if (!isAuthenticated) {
     return (
       <main className="section">
-        <div className="card">Sign in to upload a skill.</div>
+        <div className="card">Sign in to upload a {contentLabel}.</div>
       </main>
     )
   }
@@ -222,8 +260,8 @@ export function Upload() {
       setError('Total size exceeds 50MB per version.')
       return
     }
-    if (!hasSkillFile) {
-      setError('SKILL.md is required.')
+    if (!hasRequiredFile) {
+      setError(`${requiredFileLabel} is required.`)
       return
     }
     setStatus('Uploading files…')
@@ -238,25 +276,21 @@ export function Upload() {
 
     for (const file of files) {
       const uploadUrl = await generateUploadUrl()
-      const storageId = await uploadFile(uploadUrl, file)
+      const path = (file.webkitRelativePath || file.name).replace(/^\.\//, '')
       const sha256 = await hashFile(file)
-      const rawPath = (file.webkitRelativePath || file.name).replace(/^\.\//, '')
-      const path =
-        stripRoot && rawPath.startsWith(`${stripRoot}/`)
-          ? rawPath.slice(stripRoot.length + 1)
-          : rawPath
+      const stored = await uploadFile(uploadUrl, file)
       uploaded.push({
         path,
         size: file.size,
-        storageId,
+        storageId: stored.storageId,
         sha256,
         contentType: file.type || undefined,
       })
     }
 
-    setStatus('Publishing version…')
+    setStatus('Publishing…')
     try {
-      await publishVersion({
+      const result = await publishVersion({
         slug: trimmedSlug,
         displayName: trimmedName,
         version,
@@ -264,240 +298,179 @@ export function Upload() {
         tags: parsedTags,
         files: uploaded,
       })
-      setStatus('Published.')
-      void navigate({ to: '/skills/$slug', params: { slug: trimmedSlug } })
-    } catch (publishError) {
-      const message = formatPublishError(publishError)
-      setError(message)
       setStatus(null)
-      if (validationRef.current && 'scrollIntoView' in validationRef.current) {
-        validationRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setError(null)
+      setHasAttempted(false)
+      setChangelogSource('user')
+      if (result) {
+        void navigate({
+          to: isSoulMode ? '/souls/$slug' : '/skills/$slug',
+          params: { slug: trimmedSlug },
+        })
       }
-    }
-  }
-
-  async function handleFilesSelected(selected: File[]) {
-    if (selected.length === 0) return
-    setError(null)
-    setStatus('Preparing files…')
-    let expanded: File[] = []
-    try {
-      expanded = await expandFiles(selected)
+    } catch (error) {
       setStatus(null)
-    } catch (expandError) {
-      const message =
-        expandError instanceof Error ? expandError.message : 'Could not extract files.'
-      setError(message)
-      setStatus(null)
-      return
+      setError(formatPublishError(error))
     }
-    const next = new Map<string, File>()
-    for (const file of files) {
-      const key = `${file.webkitRelativePath || file.name}:${file.size}`
-      next.set(key, file)
-    }
-    for (const file of expanded) {
-      const key = `${file.webkitRelativePath || file.name}:${file.size}`
-      next.set(key, file)
-    }
-    setFiles(Array.from(next.values()))
-  }
-
-  function handleRemoveFile(target: File) {
-    setFiles((current) =>
-      current.filter(
-        (file) =>
-          `${file.webkitRelativePath || file.name}:${file.size}` !==
-          `${target.webkitRelativePath || target.name}:${target.size}`,
-      ),
-    )
-  }
-
-  function handleDrop(event: React.DragEvent<HTMLButtonElement>) {
-    event.preventDefault()
-    setIsDragging(false)
-    void handleFilesSelected(Array.from(event.dataTransfer.files ?? []))
-  }
-
-  function handleDragOver(event: React.DragEvent<HTMLButtonElement>) {
-    event.preventDefault()
-    setIsDragging(true)
-  }
-
-  function handleDragLeave() {
-    setIsDragging(false)
   }
 
   return (
-    <main className="section upload-shell">
-      <header className="upload-header">
-        <div>
-          <span className="upload-kicker">Publish</span>
-          <h1 className="upload-title">Publish a skill</h1>
-          <p className="upload-subtitle">
-            Bundle SKILL.md + text files. Tag it, version it, ship it.
-          </p>
+    <main className="section">
+      <h1 className="section-title">Publish a {contentLabel}</h1>
+      <p className="section-subtitle">
+        Drop a folder with {requiredFileLabel} and text files. We will handle the rest.
+      </p>
+
+      <form onSubmit={handleSubmit} className="upload-grid">
+        <div className="card">
+          <label className="form-label" htmlFor="slug">
+            Slug
+          </label>
+          <input
+            className="form-input"
+            id="slug"
+            value={slug}
+            onChange={(event) => setSlug(event.target.value)}
+            placeholder={`${contentLabel}-name`}
+          />
+
+          <label className="form-label" htmlFor="displayName">
+            Display name
+          </label>
+          <input
+            className="form-input"
+            id="displayName"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder={`My ${contentLabel}`}
+          />
+
+          <label className="form-label" htmlFor="version">
+            Version
+          </label>
+          <input
+            className="form-input"
+            id="version"
+            value={version}
+            onChange={(event) => setVersion(event.target.value)}
+            placeholder="1.0.0"
+          />
+
+          <label className="form-label" htmlFor="tags">
+            Tags
+          </label>
+          <input
+            className="form-input"
+            id="tags"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            placeholder="latest, stable"
+          />
         </div>
-      </header>
-      <form className="upload-card" onSubmit={handleSubmit}>
-        <div className="upload-grid">
-          <div className="upload-fields">
-            <label className="upload-field">
-              <span>Slug</span>
-              <input
-                className="search-input upload-input"
-                value={slug}
-                onChange={(event) => setSlug(event.target.value)}
-                placeholder="my-skill-pack"
-              />
-            </label>
-            <label className="upload-field">
-              <span>Display name</span>
-              <input
-                className="search-input upload-input"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="My Skill Pack"
-              />
-            </label>
-            <div className="upload-row">
-              <label className="upload-field">
-                <span>Version</span>
-                <input
-                  className="search-input upload-input"
-                  value={version}
-                  onChange={(event) => setVersion(event.target.value)}
-                  placeholder="1.0.0"
-                />
-              </label>
-              <label className="upload-field">
-                <span>Tags</span>
-                <input
-                  className="search-input upload-input"
-                  value={tags}
-                  onChange={(event) => setTags(event.target.value)}
-                  placeholder="latest, beta"
-                />
-              </label>
-            </div>
-            <label className="upload-field">
-              <div className="upload-field-header">
-                <span>Changelog</span>
-                {changelogSource === 'auto' ? (
-                  <span className="upload-field-hint">
-                    {changelogStatus === 'loading' ? 'Auto-generating…' : 'Auto-generated'}
-                  </span>
-                ) : changelogStatus === 'error' ? (
-                  <span className="upload-field-hint">Auto-generation failed</span>
-                ) : changelogStatus === 'loading' ? (
-                  <span className="upload-field-hint">Auto-generating…</span>
-                ) : null}
-              </div>
-              <textarea
-                className="search-input upload-input"
-                rows={4}
-                value={changelog}
-                onChange={(event) => {
-                  changelogTouchedRef.current = true
-                  changelogRequestRef.current += 1
-                  setChangelogSource('user')
-                  setChangelogStatus('idle')
-                  setChangelog(event.target.value)
-                }}
-                placeholder="What changed in this version?"
-              />
-            </label>
-          </div>
-          <div className="upload-side">
-            <div className={`dropzone${isDragging ? ' is-dragging' : ''}`}>
-              <button
-                className="dropzone-button"
-                type="button"
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="dropzone-icon">⬇</div>
-                <div>
-                  <strong>Drop a folder, files, or zip</strong>
-                  <p>Click to choose a folder. Archives auto-extract.</p>
-                </div>
+
+        <div className="card">
+          <label
+            className={`upload-dropzone${isDragging ? ' is-dragging' : ''}`}
+            onDragOver={(event) => {
+              event.preventDefault()
+              setIsDragging(true)
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault()
+              setIsDragging(false)
+              const dropped = Array.from(event.dataTransfer.files)
+              void expandFiles(dropped).then((next) => setFiles(next))
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              className="upload-input"
+              id="upload-files"
+              type="file"
+              multiple
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? [])
+                void expandFiles(picked).then((next) => setFiles(next))
+              }}
+            />
+            <div className="upload-dropzone-copy">
+              <strong>Drop a folder</strong>
+              <span>
+                {files.length} files · {sizeLabel}
+              </span>
+              <button className="btn" type="button" onClick={() => fileInputRef.current?.click()}>
+                Choose folder
               </button>
-              <input
-                ref={fileInputRef}
-                className="dropzone-input"
-                type="file"
-                multiple
-                data-testid="upload-input"
-                onChange={(event) => void handleFilesSelected(Array.from(event.target.files ?? []))}
-              />
             </div>
-            <div className="upload-summary">
-              <div>
-                <strong>{files.length}</strong> files · <span>{sizeLabel}</span>
-              </div>
-              <div className={`upload-requirement${hasSkillFile ? ' ok' : ''}`}>
-                SKILL.md {hasSkillFile ? 'found' : 'required'}
-              </div>
-              {files.length ? (
-                <div className="upload-filelist">
-                  {files.map((file, index) => (
-                    <div
-                      key={`${file.webkitRelativePath || file.name}:${file.size}`}
-                      className="upload-file"
-                    >
-                      <span>
-                        {normalizedPaths[index] ?? (file.webkitRelativePath || file.name)}
-                      </span>
-                      <span>{formatBytes(file.size)}</span>
-                      <button
-                        className="upload-remove"
-                        type="button"
-                        onClick={() => handleRemoveFile(file)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+          </label>
+
+          <div className="upload-file-list">
+            {files.length === 0 ? (
+              <div className="stat">No files selected.</div>
+            ) : (
+              normalizedPaths.map((path) => (
+                <div key={path} className="upload-file-row">
+                  <span>{path}</span>
                 </div>
-              ) : (
-                <p className="upload-muted">No files selected yet.</p>
-              )}
-              {files.length ? (
-                <button className="btn" type="button" onClick={() => setFiles([])}>
-                  Clear selection
-                </button>
-              ) : null}
-            </div>
-            <div className="upload-notes">
-              <strong>Checks</strong>
-              <ul>
-                <li>Include SKILL.md</li>
-                <li>50 MB max per version</li>
-                <li>Changelog optional</li>
-                <li>Valid semver version</li>
-              </ul>
-            </div>
+              ))
+            )}
           </div>
         </div>
-        <div className="upload-footer" ref={validationRef}>
-          <button className="btn btn-primary" type="submit" disabled={Boolean(status)}>
-            Publish
+
+        <div className="card" ref={validationRef}>
+          <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
+            Validation
+          </h2>
+          {validation.issues.length === 0 ? (
+            <div className="stat">All checks passed.</div>
+          ) : (
+            <ul className="validation-list">
+              {validation.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="card">
+          <label className="form-label" htmlFor="changelog">
+            Changelog
+          </label>
+          <textarea
+            className="form-input"
+            id="changelog"
+            rows={6}
+            value={changelog}
+            onChange={(event) => {
+              changelogTouchedRef.current = true
+              setChangelogSource('user')
+              setChangelog(event.target.value)
+            }}
+            placeholder={`Describe what changed in this ${contentLabel}...`}
+          />
+          {changelogStatus === 'loading' ? <div className="stat">Generating changelog…</div> : null}
+          {changelogStatus === 'error' ? (
+            <div className="stat">Could not auto-generate changelog.</div>
+          ) : null}
+          {changelogSource === 'auto' && changelog ? (
+            <div className="stat">Auto-generated changelog (edit as needed).</div>
+          ) : null}
+        </div>
+
+        <div className="card">
+          {error ? (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          ) : null}
+          {status ? <div className="stat">{status}</div> : null}
+          <button className="btn btn-primary" type="submit" disabled={!validation.ready}>
+            Publish {contentLabel}
           </button>
           {hasAttempted && !validation.ready ? (
-            <div className="upload-validation">
-              {validation.issues.map((issue) => (
-                <div key={issue} className="upload-validation-item">
-                  {issue}
-                </div>
-              ))}
-            </div>
-          ) : error ? null : validation.ready ? (
-            <div className="upload-ready">Ready to publish.</div>
+            <div className="stat">Fix validation issues to continue.</div>
           ) : null}
-          {error ? <div className="stat upload-error">{error}</div> : null}
-          {status ? <div className="stat">{status}</div> : null}
         </div>
       </form>
     </main>

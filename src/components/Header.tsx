@@ -2,9 +2,10 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { Link } from '@tanstack/react-router'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { Menu, Monitor, Moon, Sun } from 'lucide-react'
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { api } from '../../convex/_generated/api'
 import { gravatarUrl } from '../lib/gravatar'
+import { getSiteMode, getSiteName } from '../lib/site'
 import { applyTheme, useThemeMode } from '../lib/theme'
 import { startThemeTransition } from '../lib/theme-transition'
 import {
@@ -22,6 +23,9 @@ export default function Header() {
   const me = useQuery(api.users.me)
   const { mode, setMode } = useThemeMode()
   const toggleRef = useRef<HTMLDivElement | null>(null)
+  const siteMode = getSiteMode()
+  const siteName = useMemo(() => getSiteName(siteMode), [siteMode])
+  const isSoulMode = siteMode === 'souls'
 
   const avatar = me?.image ?? (me?.email ? gravatarUrl(me.email) : undefined)
   const handle = me?.handle ?? me?.displayName ?? 'user'
@@ -48,25 +52,29 @@ export default function Header() {
           <span className="brand-mark">
             <img src="/clawd-logo.png" alt="" aria-hidden="true" />
           </span>
-          <span className="brand-name">ClawdHub</span>
+          <span className="brand-name">{siteName}</span>
         </Link>
         <nav className="nav-links">
           <Link
-            to="/skills"
-            search={{
-              q: undefined,
-              sort: undefined,
-              dir: undefined,
-              highlighted: undefined,
-              view: undefined,
-            }}
+            to={isSoulMode ? '/souls' : '/skills'}
+            search={
+              isSoulMode
+                ? undefined
+                : {
+                    q: undefined,
+                    sort: undefined,
+                    dir: undefined,
+                    highlighted: undefined,
+                    view: undefined,
+                  }
+            }
           >
-            Skills
+            {isSoulMode ? 'Souls' : 'Skills'}
           </Link>
           <Link to="/upload" search={{ updateSlug: undefined }}>
             Upload
           </Link>
-          <Link to="/import">Import</Link>
+          {isSoulMode ? null : <Link to="/import">Import</Link>}
           <Link to="/search" search={{ q: undefined, highlighted: undefined }}>
             Search
           </Link>
@@ -84,16 +92,20 @@ export default function Header() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link
-                    to="/skills"
-                    search={{
-                      q: undefined,
-                      sort: undefined,
-                      dir: undefined,
-                      highlighted: undefined,
-                      view: undefined,
-                    }}
+                    to={isSoulMode ? '/souls' : '/skills'}
+                    search={
+                      isSoulMode
+                        ? undefined
+                        : {
+                            q: undefined,
+                            sort: undefined,
+                            dir: undefined,
+                            highlighted: undefined,
+                            view: undefined,
+                          }
+                    }
                   >
-                    Skills
+                    {isSoulMode ? 'Souls' : 'Skills'}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -101,9 +113,11 @@ export default function Header() {
                     Upload
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/import">Import</Link>
-                </DropdownMenuItem>
+                {isSoulMode ? null : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/import">Import</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link to="/search" search={{ q: undefined, highlighted: undefined }}>
                     Search

@@ -5,6 +5,8 @@ import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { InstallSwitcher } from '../components/InstallSwitcher'
 import { SkillCard } from '../components/SkillCard'
+import { SoulCard } from '../components/SoulCard'
+import { getSiteMode } from '../lib/site'
 
 export const Route = createFileRoute('/')({
   validateSearch: (search) => ({
@@ -15,6 +17,11 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+  const mode = getSiteMode()
+  return mode === 'souls' ? <SoulHubHome /> : <SkillsHome />
+}
+
+function SkillsHome() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
   const searchSkills = useAction(api.search.searchSkills)
@@ -247,6 +254,202 @@ function Home() {
             </div>
           </section>
         </>
+      )}
+    </main>
+  )
+}
+
+function SoulHubHome() {
+  const navigate = Route.useNavigate()
+  const search = Route.useSearch()
+  const searchSouls = useAction(api.search.searchSouls)
+  const ensureSoulSeeds = useAction(api.seed.ensureSoulSeeds)
+  const latest = (useQuery(api.souls.list, { limit: 12 }) as Doc<'souls'>[]) ?? []
+  const [query, setQuery] = useState(search.q ?? '')
+  const [results, setResults] = useState<
+    Array<{ soul: Doc<'souls'>; version: Doc<'soulVersions'> | null; score: number }>
+  >([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchMode, setSearchMode] = useState(Boolean(search.q))
+  const searchRequest = useRef(0)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const trimmedQuery = useMemo(() => query.trim(), [query])
+  const hasQuery = trimmedQuery.length > 0
+
+  useEffect(() => {
+    setQuery(search.q ?? '')
+    if (search.q) {
+      setSearchMode(true)
+    }
+  }, [search.q])
+
+  useEffect(() => {
+    if (seedEnsuredRef.current) return
+    seedEnsuredRef.current = true
+    void ensureSoulSeeds({})
+  }, [ensureSoulSeeds])
+
+  useEffect(() => {
+    void navigate({
+      search: () => ({
+        q: trimmedQuery || undefined,
+        highlighted: undefined,
+      }),
+      replace: true,
+    })
+  }, [navigate, trimmedQuery])
+
+  useEffect(() => {
+    if (!trimmedQuery) {
+      setResults([])
+      setIsSearching(false)
+      return
+    }
+    searchRequest.current += 1
+    const requestId = searchRequest.current
+    setIsSearching(true)
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const data = (await searchSouls({ query: trimmedQuery })) as Array<{
+            soul: Doc<'souls'>
+            version: Doc<'soulVersions'> | null
+            score: number
+          }>
+          if (requestId === searchRequest.current) {
+            setResults(data)
+          }
+        } finally {
+          if (requestId === searchRequest.current) {
+            setIsSearching(false)
+          }
+        }
+      })()
+    }, 220)
+    return () => window.clearTimeout(handle)
+  }, [searchSouls, trimmedQuery])
+
+  return (
+    <main>
+      <section className={`hero${searchMode ? ' search-mode' : ''}`}>
+        <div className="hero-inner">
+          <div className="hero-copy fade-up" data-delay="1">
+            <span className="hero-badge">SOUL.md, shared.</span>
+            <h1 className="hero-title">SoulHub, where system lore lives.</h1>
+            <p className="hero-subtitle">
+              Share SOUL.md bundles, version them like docs, and keep personal system lore in one
+              public place.
+            </p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <Link to="/upload" search={{ updateSlug: undefined }} className="btn btn-primary">
+                Publish a soul
+              </Link>
+              <Link
+                to="/souls"
+                search={{ q: undefined, sort: undefined, dir: undefined, view: undefined }}
+                className="btn"
+              >
+                Browse souls
+              </Link>
+            </div>
+          </div>
+          <div className="hero-card hero-search-card fade-up" data-delay="2">
+            <form
+              className="search-bar"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (!searchMode) setSearchMode(true)
+                inputRef.current?.focus()
+              }}
+            >
+              <span className="mono">/</span>
+              <input
+                ref={inputRef}
+                className="search-input"
+                placeholder="Search souls, prompts, or lore"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onFocus={() => setSearchMode(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape' && !trimmedQuery) {
+                    setSearchMode(false)
+                    inputRef.current?.blur()
+                  }
+                }}
+              />
+            </form>
+            {!searchMode ? (
+              <div className="hero-install" style={{ marginTop: 18 }}>
+                <div className="stat">Search souls. Versioned, readable, easy to remix.</div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      {searchMode ? (
+        <section className="section">
+          <h2 className="section-title">Search results</h2>
+          <p className="section-subtitle">
+            {isSearching ? 'Searching now.' : 'Instant results as you type.'}
+          </p>
+          <div className="grid">
+            {!hasQuery ? (
+              <div className="card">Start typing to search.</div>
+            ) : results.length === 0 ? (
+              <div className="card">No results yet. Try a different prompt.</div>
+            ) : (
+              results.map((result) => (
+                <Link
+                  key={result.soul._id}
+                  to="/souls/$slug"
+                  params={{ slug: result.soul.slug }}
+                  className="card"
+                >
+                  <div className="tag">Score {(result.score ?? 0).toFixed(2)}</div>
+                  <h3 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
+                    {result.soul.displayName}
+                  </h3>
+                  <p className="section-subtitle" style={{ margin: 0 }}>
+                    {result.soul.summary ?? 'SOUL.md bundle'}
+                  </p>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="section">
+          <h2 className="section-title">Latest souls</h2>
+          <p className="section-subtitle">Newest SOUL.md bundles across the hub.</p>
+          <div className="grid">
+            {latest.length === 0 ? (
+              <div className="card">No souls yet. Be the first.</div>
+            ) : (
+              latest.map((soul) => (
+                <SoulCard
+                  key={soul._id}
+                  soul={soul}
+                  summaryFallback="A SOUL.md bundle."
+                  meta={
+                    <div className="stat">
+                      ⭐ {soul.stats.stars} · ⤓ {soul.stats.downloads} · {soul.stats.versions} v
+                    </div>
+                  }
+                />
+              ))
+            )}
+          </div>
+          <div className="section-cta">
+            <Link
+              to="/souls"
+              search={{ q: undefined, sort: undefined, dir: undefined, view: undefined }}
+              className="btn"
+            >
+              See all souls
+            </Link>
+          </div>
+        </section>
       )}
     </main>
   )

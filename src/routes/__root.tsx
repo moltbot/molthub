@@ -6,13 +6,16 @@ import { AppProviders } from '../components/AppProviders'
 import { ClientOnly } from '../components/ClientOnly'
 import { Footer } from '../components/Footer'
 import Header from '../components/Header'
-import { getSiteUrl } from '../lib/og'
+import { getSiteDescription, getSiteMode, getSiteName, getSiteUrlForMode } from '../lib/site'
 
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
   head: () => {
-    const siteUrl = getSiteUrl()
+    const mode = getSiteMode()
+    const siteName = getSiteName(mode)
+    const siteDescription = getSiteDescription(mode)
+    const siteUrl = getSiteUrlForMode(mode)
     const ogImage = `${siteUrl}/og.png`
 
     return {
@@ -25,15 +28,15 @@ export const Route = createRootRoute({
           content: 'width=device-width, initial-scale=1',
         },
         {
-          title: 'ClawdHub',
+          title: siteName,
         },
         {
           name: 'description',
-          content: 'ClawdHub — a fast skill registry for agents, with vector search.',
+          content: siteDescription,
         },
         {
           property: 'og:site_name',
-          content: 'ClawdHub',
+          content: siteName,
         },
         {
           property: 'og:type',
@@ -41,11 +44,11 @@ export const Route = createRootRoute({
         },
         {
           property: 'og:title',
-          content: 'ClawdHub',
+          content: siteName,
         },
         {
           property: 'og:description',
-          content: 'ClawdHub — a fast skill registry for agents, with vector search.',
+          content: siteDescription,
         },
         {
           property: 'og:image',
@@ -61,7 +64,7 @@ export const Route = createRootRoute({
         },
         {
           property: 'og:image:alt',
-          content: 'ClawdHub — a fast skill registry for agents, with vector search.',
+          content: `${siteName} — ${siteDescription}`,
         },
         {
           name: 'twitter:card',
@@ -69,11 +72,11 @@ export const Route = createRootRoute({
         },
         {
           name: 'twitter:title',
-          content: 'ClawdHub',
+          content: siteName,
         },
         {
           name: 'twitter:description',
-          content: 'ClawdHub — a fast skill registry for agents, with vector search.',
+          content: siteDescription,
         },
         {
           name: 'twitter:image',
@@ -81,7 +84,7 @@ export const Route = createRootRoute({
         },
         {
           name: 'twitter:image:alt',
-          content: 'ClawdHub — a fast skill registry for agents, with vector search.',
+          content: `${siteName} — ${siteDescription}`,
         },
       ],
       links: [

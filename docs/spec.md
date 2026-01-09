@@ -9,6 +9,7 @@ read_when:
 # ClawdHub — product + implementation spec (v1)
 
 ## Goals
+- SoulHub mode for sharing `SOUL.md` bundles (host-based entry point).
 - Minimal, fast SPA for browsing and publishing agent skills.
 - Skills stored in Convex (files + metadata + versions + stats).
 - GitHub OAuth login; GitHub App backs up skills to `clawdbot/skills`.
@@ -63,6 +64,39 @@ From SKILL.md frontmatter + AgentSkills + Clawdis extensions:
   `requires` (`bins`, `anyBins`, `env`, `config`), `install[]`
   - `metadata` in frontmatter is YAML (object) preferred; legacy JSON-string accepted.
 
+
+
+### Soul
+- `slug` (unique)
+- `displayName`
+- `ownerUserId`
+- `summary` (from SOUL.md frontmatter `description`)
+- `latestVersionId`
+- `tags` map: `{ tag -> versionId }`
+- `stats`: `{ downloads, stars, versions, comments }`
+- `status`: `active` only (soft-delete on version/comment only)
+- `createdAt`, `updatedAt`
+
+### SoulVersion
+- `soulId`
+- `version` (semver string)
+- `tag` (string, optional; `latest` always maintained separately)
+- `changelog` (required)
+- `files`: list of file metadata (SOUL.md only)
+  - `path`, `size`, `storageId`, `sha256`
+- `parsed` (metadata extracted from SOUL.md)
+- `vectorDocId` (if using RAG component) OR `embeddingId`
+- `createdBy`, `createdAt`
+- `softDeletedAt` (nullable)
+
+### SoulComment
+- `soulId`, `userId`, `body`
+- `softDeletedAt`, `deletedBy`
+- `createdAt`
+
+### SoulStar
+- `soulId`, `userId`, `createdAt`
+
 ### Comment
 - `skillId`, `userId`, `body`
 - `softDeletedAt`, `deletedBy`
@@ -94,6 +128,9 @@ From SKILL.md frontmatter + AgentSkills + Clawdis extensions:
    - version uniqueness
 5) Server stores files + metadata, sets `latest` tag, updates stats.
 
+Soul upload flow: same as skills, but only `SOUL.md` is allowed in the bundle.
+Seed data lives in `convex/seed.ts` for local dev.
+
 ## Versioning + tags
 - Each upload is a new `SkillVersion`.
 - `latest` tag always points to most recent version unless user re-tags.
@@ -101,7 +138,7 @@ From SKILL.md frontmatter + AgentSkills + Clawdis extensions:
 - Changelog is optional.
 
 ## Search
-- Vector search over: SKILL.md + other text files + metadata summary.
+- Vector search over: SKILL.md + other text files + metadata summary (souls index SOUL.md).
 - Convex embeddings + vector index.
 - Filters: tag, owner, `redactionApproved` only, min stars, updatedAt.
 

@@ -1,11 +1,14 @@
+import { getSiteName } from '../lib/site'
+
 export function Footer() {
+  const siteName = getSiteName()
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
         <div className="site-footer-divider" aria-hidden="true" />
         <div className="site-footer-row">
           <div className="site-footer-copy">
-            A{' '}
+            {siteName} · A{' '}
             <a href="https://clawdbot.com" target="_blank" rel="noreferrer">
               ClawdBot
             </a>{' '}
