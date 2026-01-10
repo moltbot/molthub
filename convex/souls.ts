@@ -19,10 +19,12 @@ const MAX_LIST_LIMIT = 50
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const soul = await ctx.db
+    const matches = await ctx.db
       .query('souls')
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
-      .unique()
+      .order('desc')
+      .take(2)
+    const soul = matches[0] ?? null
     if (!soul || soul.softDeletedAt) return null
     const latestVersion = soul.latestVersionId ? await ctx.db.get(soul.latestVersionId) : null
     const owner = await ctx.db.get(soul.ownerUserId)
@@ -34,10 +36,12 @@ export const getBySlug = query({
 export const getSoulBySlugInternal = internalQuery({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    return ctx.db
+    const matches = await ctx.db
       .query('souls')
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
-      .unique()
+      .order('desc')
+      .take(2)
+    return matches[0] ?? null
   },
 })
 
@@ -237,10 +241,12 @@ export const resolveVersionByHash = query({
     const hash = args.hash.trim().toLowerCase()
     if (!slug || !/^[a-f0-9]{64}$/.test(hash)) return null
 
-    const soul = await ctx.db
+    const soulMatches = await ctx.db
       .query('souls')
       .withIndex('by_slug', (q) => q.eq('slug', slug))
-      .unique()
+      .order('desc')
+      .take(2)
+    const soul = soulMatches[0] ?? null
     if (!soul || soul.softDeletedAt) return null
 
     const latestVersion = soul.latestVersionId ? await ctx.db.get(soul.latestVersionId) : null
@@ -366,10 +372,12 @@ export const insertVersion = internalMutation({
     const user = await ctx.db.get(userId)
     if (!user || user.deletedAt) throw new Error('User not found')
 
-    let soul = await ctx.db
+    const soulMatches = await ctx.db
       .query('souls')
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
-      .unique()
+      .order('desc')
+      .take(2)
+    let soul = soulMatches[0] ?? null
 
     if (soul && soul.ownerUserId !== userId) {
       throw new Error('Only the owner can publish updates')
@@ -489,10 +497,12 @@ export const setSoulSoftDeletedInternal = internalMutation({
     const slug = args.slug.trim().toLowerCase()
     if (!slug) throw new Error('Slug required')
 
-    const soul = await ctx.db
+    const soulMatches = await ctx.db
       .query('souls')
       .withIndex('by_slug', (q) => q.eq('slug', slug))
-      .unique()
+      .order('desc')
+      .take(2)
+    const soul = soulMatches[0] ?? null
     if (!soul) throw new Error('Soul not found')
 
     if (soul.ownerUserId !== args.userId) {
