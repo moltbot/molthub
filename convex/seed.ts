@@ -258,10 +258,7 @@ export const ensureSeedUserInternal = internalMutation({
         .withIndex('handle', (q) => q.eq('handle', candidate))
         .unique()
       if (existing) {
-        if ((existing.displayName ?? existing.name) !== displayName) {
-          await ctx.db.patch(existing._id, { displayName, updatedAt: Date.now() })
-        }
-        return existing._id
+        continue
       }
 
       return await ctx.db.insert('users', {
