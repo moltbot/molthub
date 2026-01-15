@@ -1103,10 +1103,12 @@ async function starsDeleteRouterV1Handler(ctx: ActionCtx, request: Request) {
     if (!skill) return text('Skill not found', 404, rate.headers)
 
     const isCurrentlyStarred = await ctx.runQuery(api.stars.isStarred, { skillId: skill._id })
+    let unstarred = false
     if (isCurrentlyStarred) {
       await ctx.runMutation(internal.stars.toggle, { skillId: skill._id })
+      unstarred = true
     }
-    return json({ ok: true, unstarred: true }, 200, rate.headers)
+    return json({ ok: true, unstarred, alreadyUnstarred: !unstarred }, 200, rate.headers)
   } catch (error) {
     return text('Unauthorized', 401, rate.headers)
   }
