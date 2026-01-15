@@ -1062,3 +1062,72 @@ export const __handlers = {
   soulsDeleteRouterV1Handler,
   whoamiV1Handler,
 }
+
+// ============ STARS API ============
+
+async function starsToggleRouterV1Handler(ctx: ActionCtx, request: Request) {
+  const rate = await applyRateLimit(ctx, request, 'write')
+  if (!rate.ok) return rate.response
+
+  const segments = getPathSegments(request, '/api/v1/stars/')
+  if (segments.length !== 1) return text('Not found', 404, rate.headers)
+  const slug = segments[0]?.trim().toLowerCase() ?? ''
+
+  try {
+    const { userId } = await requireApiTokenUser(ctx, request)
+    // Get skill by slug
+    const skill = await ctx.runQuery(api.skills.getBySlugInternal, { slug })
+    if (!skill) return text('Skill not found', 404, rate.headers)
+
+    const result = await ctx.runMutation(internal.stars.toggle, { skillId: skill._id })
+    return json(result, 200, rate.headers)
+  } catch (error) {
+    return text('Unauthorized', 401, rate.headers)
+  }
+}
+
+export const starsToggleRouterV1Http = httpAction(starsToggleRouterV1Handler)
+
+async function starsDeleteRouterV1Handler(ctx: ActionCtx, request: Request) {
+  const rate = await applyRateLimit(ctx, request, 'write')
+  if (!rate.ok) return rate.response
+
+  const segments = getPathSegments(request, '/api/v1/stars/')
+  if (segments.length !== 1) return text('Not found', 404, rate.headers)
+  const slug = segments[0]?.trim().toLowerCase() ?? ''
+
+  try {
+    const { userId } = await requireApiTokenUser(ctx, request)
+    // Get skill by slug
+    const skill = await ctx.runQuery(api.skills.getBySlugInternal, { slug })
+    if (!skill) return text('Skill not found', 404, rate.headers)
+
+    const isCurrentlyStarred = await ctx.runQuery(api.stars.isStarred, { skillId: skill._id })
+    if (isCurrentlyStarred) {
+      await ctx.runMutation(internal.stars.toggle, { skillId: skill._id })
+    }
+    return json({ ok: true, unstarred: true }, 200, rate.headers)
+  } catch (error) {
+    return text('Unauthorized', 401, rate.headers)
+  }
+}
+
+export const starsDeleteRouterV1Http = httpAction(starsDeleteRouterV1Handler)
+
+export const __handlers = {
+  searchSkillsV1Handler,
+  resolveSkillVersionV1Handler,
+  listSkillsV1Handler,
+  skillsGetRouterV1Handler,
+  publishSkillV1Handler,
+  skillsPostRouterV1Handler,
+  skillsDeleteRouterV1Handler,
+  listSoulsV1Handler,
+  soulsGetRouterV1Handler,
+  publishSoulV1Handler,
+  soulsPostRouterV1Handler,
+  soulsDeleteRouterV1Handler,
+  whoamiV1Handler,
+  starsToggleRouterV1Handler,
+  starsDeleteRouterV1Handler,
+}
