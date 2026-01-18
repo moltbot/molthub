@@ -28,6 +28,7 @@ import type * as lib_embeddings from "../lib/embeddings.js";
 import type * as lib_githubBackup from "../lib/githubBackup.js";
 import type * as lib_githubImport from "../lib/githubImport.js";
 import type * as lib_githubSoulBackup from "../lib/githubSoulBackup.js";
+import type * as lib_searchText from "../lib/searchText.js";
 import type * as lib_skillBackfill from "../lib/skillBackfill.js";
 import type * as lib_skillPublish from "../lib/skillPublish.js";
 import type * as lib_skills from "../lib/skills.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "lib/githubBackup": typeof lib_githubBackup;
   "lib/githubImport": typeof lib_githubImport;
   "lib/githubSoulBackup": typeof lib_githubSoulBackup;
+  "lib/searchText": typeof lib_searchText;
   "lib/skillBackfill": typeof lib_skillBackfill;
   "lib/skillPublish": typeof lib_skillPublish;
   "lib/skills": typeof lib_skills;
