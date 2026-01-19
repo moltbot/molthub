@@ -153,7 +153,7 @@ export async function cmdUpdate(
       } else {
         const meta = await apiRequest(
           registry,
-          { method: 'GET', url: `${ApiRoutes.skills}/${encodeURIComponent(entry)}` },
+          { method: 'GET', path: `${ApiRoutes.skills}/${encodeURIComponent(entry)}` },
           ApiV1SkillResponseSchema,
         )
         resolveResult = { match: null, latestVersion: meta.latestVersion ?? null }
