@@ -13,6 +13,10 @@ function UserProfile() {
   const { handle } = Route.useParams()
   const me = useQuery(api.users.me)
   const user = useQuery(api.users.getByHandle, { handle }) as Doc<'users'> | null | undefined
+  const publishedSkills = useQuery(
+    api.skills.list,
+    user ? { ownerUserId: user._id, limit: 50 } : 'skip',
+  ) as Doc<'skills'>[] | undefined
   const starredSkills = useQuery(
     api.stars.listByUser,
     user ? { userId: user._id, limit: 50 } : 'skip',
@@ -54,6 +58,8 @@ function UserProfile() {
   const initial = displayName.charAt(0).toUpperCase()
   const isLoadingSkills = starredSkills === undefined
   const skills = starredSkills ?? []
+  const isLoadingPublished = publishedSkills === undefined
+  const published = publishedSkills ?? []
 
   return (
     <main className="section">
@@ -98,6 +104,34 @@ function UserProfile() {
         />
       ) : (
         <>
+          <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
+            Published
+          </h2>
+          <p className="section-subtitle">Skills published by this user.</p>
+
+          {isLoadingPublished ? (
+            <div className="card">
+              <div className="loading-indicator">Loading published skills…</div>
+            </div>
+          ) : published.length > 0 ? (
+            <div className="grid" style={{ marginBottom: 18 }}>
+              {published.map((skill) => (
+                <SkillCard
+                  key={skill._id}
+                  skill={skill}
+                  badge={skill.batch === 'highlighted' ? 'Highlighted' : undefined}
+                  summaryFallback="Agent-ready skill pack."
+                  meta={
+                    <div className="stat">
+                      ⭐ {skill.stats.stars} · ⤓ {skill.stats.downloads} · ⤒{' '}
+                      {skill.stats.installsAllTime ?? 0}
+                    </div>
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
+
           <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
             Stars
           </h2>
