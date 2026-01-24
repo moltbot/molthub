@@ -48,14 +48,14 @@ describe('httpApi handlers', () => {
     expect(runAction).toHaveBeenCalledWith(expect.anything(), {
       query: 'test',
       limit: 5,
-      approvedOnly: true,
+      highlightedOnly: true,
     })
     expect(response.status).toBe(200)
     const json = await response.json()
     expect(json.results[0].slug).toBe('a')
   })
 
-  it('searchSkillsHttp omits approvedOnly when false', async () => {
+  it('searchSkillsHttp omits highlightedOnly when approvedOnly is false', async () => {
     const runAction = vi.fn().mockResolvedValue([])
     await __handlers.searchSkillsHandler(
       makeCtx({ runAction }),
@@ -64,7 +64,7 @@ describe('httpApi handlers', () => {
     expect(runAction).toHaveBeenCalledWith(expect.anything(), {
       query: 'test',
       limit: undefined,
-      approvedOnly: undefined,
+      highlightedOnly: undefined,
     })
   })
 
