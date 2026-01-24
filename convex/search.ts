@@ -108,7 +108,7 @@ export const hydrateResults = internalQuery({
         const embedding = await ctx.db.get(embeddingId)
         if (!embedding) return null
         const skill = await ctx.db.get(embedding.skillId)
-        if (skill?.softDeletedAt) return null
+        if (!skill || skill.softDeletedAt) return null
         const [version, ownerHandle] = await Promise.all([
           ctx.db.get(embedding.versionId),
           getOwnerHandle(skill.ownerUserId),
