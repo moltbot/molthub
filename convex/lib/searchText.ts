@@ -18,9 +18,10 @@ export function matchesExactTokens(
   if (!text) return false
   const textTokens = tokenize(text)
   if (textTokens.length === 0) return false
-  const textSet = new Set(textTokens)
-  // Require at least one token to match, allowing vector similarity to determine relevance
-  return queryTokens.some((token) => textSet.has(token))
+  // Require at least one token to prefix-match, allowing vector similarity to determine relevance
+  return queryTokens.some((queryToken) =>
+    textTokens.some((textToken) => textToken.startsWith(queryToken)),
+  )
 }
 
 export const __test = { normalize, tokenize, matchesExactTokens }

@@ -13,18 +13,26 @@ describe('searchText', () => {
     ])
   })
 
-  it('matchesExactTokens requires at least one query token', () => {
+  it('matchesExactTokens requires at least one query token to prefix-match', () => {
     const queryTokens = tokenize('Remind Me')
     expect(matchesExactTokens(queryTokens, ['Remind Me', '/remind-me', 'Short summary'])).toBe(true)
-    // "Reminder" contains "remind" as a substring but tokenizes to "reminder", not "remind"
-    // However "remind" is not in the text, but we still match because vector search handles relevance
+    // "Reminder" starts with "remind", so it matches with prefix matching
     expect(matchesExactTokens(queryTokens, ['Reminder tool', '/reminder', 'Short summary'])).toBe(
-      false,
+      true,
     )
     // Matches because "remind" token is present
     expect(matchesExactTokens(queryTokens, ['Remind tool', '/remind', 'Short summary'])).toBe(true)
     // No matching tokens at all
     expect(matchesExactTokens(queryTokens, ['Other tool', '/other', 'Short summary'])).toBe(false)
+  })
+
+  it('matchesExactTokens supports prefix matching for partial queries', () => {
+    // "go" should match "gohome" because "gohome" starts with "go"
+    expect(matchesExactTokens(['go'], ['GoHome', '/gohome', 'Navigate home'])).toBe(true)
+    // "pad" should match "padel"
+    expect(matchesExactTokens(['pad'], ['Padel', '/padel', 'Tennis-like sport'])).toBe(true)
+    // "xyz" should not match anything
+    expect(matchesExactTokens(['xyz'], ['GoHome', '/gohome', 'Navigate home'])).toBe(false)
   })
 
   it('matchesExactTokens ignores empty inputs', () => {
