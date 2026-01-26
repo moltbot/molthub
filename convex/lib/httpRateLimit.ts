@@ -6,6 +6,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 export const RATE_LIMITS = {
   read: { ip: 120, key: 600 },
   write: { ip: 30, key: 120 },
+  download: { ip: 20, key: 120 },
 } as const
 
 type RateLimitResult = {

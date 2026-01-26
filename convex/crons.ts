@@ -24,4 +24,11 @@ crons.interval(
   { batchSize: 200, maxBatches: 5 },
 )
 
+crons.interval(
+  'download-dedupe-prune',
+  { hours: 24 },
+  internal.downloads.pruneDownloadDedupesInternal,
+  {},
+)
+
 export default crons
