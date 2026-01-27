@@ -217,6 +217,29 @@ const skillStatBackfillState = defineTable({
   updatedAt: v.number(),
 }).index('by_key', ['key'])
 
+const skillStatEvents = defineTable({
+  skillId: v.id('skills'),
+  kind: v.union(
+    v.literal('download'),
+    v.literal('star'),
+    v.literal('unstar'),
+    v.literal('install_new'),
+    v.literal('install_reactivate'),
+    v.literal('install_deactivate'),
+    v.literal('install_clear'),
+  ),
+  delta: v.optional(
+    v.object({
+      allTime: v.number(),
+      current: v.number(),
+    }),
+  ),
+  occurredAt: v.number(),
+  processedAt: v.optional(v.number()),
+})
+  .index('by_unprocessed', ['processedAt'])
+  .index('by_skill', ['skillId'])
+
 const soulEmbeddings = defineTable({
   soulId: v.id('souls'),
   versionId: v.id('soulVersions'),
@@ -366,6 +389,7 @@ export default defineSchema({
   skillDailyStats,
   skillLeaderboards,
   skillStatBackfillState,
+  skillStatEvents,
   comments,
   soulComments,
   stars,

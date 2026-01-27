@@ -44,6 +44,7 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as seedSouls from "../seedSouls.js";
+import type * as skillStatEvents from "../skillStatEvents.js";
 import type * as skills from "../skills.js";
 import type * as soulComments from "../soulComments.js";
 import type * as soulDownloads from "../soulDownloads.js";
@@ -100,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   search: typeof search;
   seed: typeof seed;
   seedSouls: typeof seedSouls;
+  skillStatEvents: typeof skillStatEvents;
   skills: typeof skills;
   soulComments: typeof soulComments;
   soulDownloads: typeof soulDownloads;
