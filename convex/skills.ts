@@ -5,7 +5,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { assertRole, requireUser, requireUserFromAction } from './lib/access'
 import { generateChangelogPreview as buildChangelogPreview } from './lib/changelog'
-import { buildTrendingLeaderboard, getTrendingRange } from './lib/leaderboards'
+import { buildTrendingLeaderboard } from './lib/leaderboards'
 import {
   fetchText,
   type PublishResult,
@@ -266,20 +266,20 @@ function sortToIndex(
 }
 
 async function getTrendingEntries(ctx: QueryCtx, limit: number) {
-  const now = Date.now()
-  const { startDay, endDay } = getTrendingRange(now)
+  // Use the pre-computed leaderboard from the hourly cron job.
+  // Avoid Date.now() here to keep the query deterministic and cacheable.
   const latest = await ctx.db
     .query('skillLeaderboards')
     .withIndex('by_kind', (q) => q.eq('kind', 'trending'))
     .order('desc')
     .take(1)
 
-  const leaderboard = latest[0]
-  if (leaderboard && leaderboard.rangeStartDay === startDay && leaderboard.rangeEndDay === endDay) {
-    return leaderboard.items.slice(0, limit)
+  if (latest[0]) {
+    return latest[0].items.slice(0, limit)
   }
 
-  const fallback = await buildTrendingLeaderboard(ctx, { limit, now })
+  // No leaderboard exists yet (cold start) - compute on the fly
+  const fallback = await buildTrendingLeaderboard(ctx, { limit, now: Date.now() })
   return fallback.items
 }
 
