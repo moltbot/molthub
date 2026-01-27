@@ -1,13 +1,21 @@
 import { useNavigate } from '@tanstack/react-router'
-import type { ClawdisSkillMetadata, SkillInstallSpec } from 'clawdhub-schema'
+import type { ClawdisSkillMetadata } from 'clawdhub-schema'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useMemo, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { api } from '../../convex/_generated/api'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { useAuthStatus } from '../lib/useAuthStatus'
-import { SkillDiffCard } from './SkillDiffCard'
+import { SkillCommentsPanel } from './SkillCommentsPanel'
+import { SkillDetailTabs } from './SkillDetailTabs'
+import {
+  buildSkillHref,
+  formatConfigSnippet,
+  formatInstallCommand,
+  formatInstallLabel,
+  formatNixInstallSnippet,
+  formatOsList,
+  stripFrontmatter,
+} from './skillDetailUtils'
 
 type SkillDetailPageProps = {
   slug: string
@@ -26,14 +34,11 @@ export function SkillDetailPage({
   const { isAuthenticated, me } = useAuthStatus()
   const result = useQuery(api.skills.getBySlug, { slug })
   const toggleStar = useMutation(api.stars.toggle)
-  const addComment = useMutation(api.comments.add)
-  const removeComment = useMutation(api.comments.remove)
   const updateTags = useMutation(api.skills.updateTags)
   const setBatch = useMutation(api.skills.setBatch)
   const getReadme = useAction(api.skills.getReadme)
   const [readme, setReadme] = useState<string | null>(null)
   const [readmeError, setReadmeError] = useState<string | null>(null)
-  const [comment, setComment] = useState('')
   const [tagName, setTagName] = useState('latest')
   const [tagVersionId, setTagVersionId] = useState<Id<'skillVersions'> | ''>('')
   const [activeTab, setActiveTab] = useState<'files' | 'compare' | 'versions'>('files')
@@ -55,11 +60,6 @@ export function SkillDetailPage({
     api.stars.isStarred,
     isAuthenticated && skill ? { skillId: skill._id } : 'skip',
   )
-  const comments = useQuery(
-    api.comments.listBySkill,
-    skill ? { skillId: skill._id, limit: 50 } : 'skip',
-  ) as Array<{ comment: Doc<'comments'>; user: Doc<'users'> | null }> | undefined
-
   const canManage = Boolean(
     me && skill && (me._id === skill.ownerUserId || ['admin', 'moderator'].includes(me.role ?? '')),
   )
@@ -460,324 +460,20 @@ export function SkillDetailPage({
             </pre>
           </div>
         ) : null}
-        <div className="card tab-card">
-          <div className="tab-header">
-            <button
-              className={`tab-button${activeTab === 'files' ? ' is-active' : ''}`}
-              type="button"
-              onClick={() => setActiveTab('files')}
-            >
-              Files
-            </button>
-            <button
-              className={`tab-button${activeTab === 'compare' ? ' is-active' : ''}`}
-              type="button"
-              onClick={() => setActiveTab('compare')}
-            >
-              Compare
-            </button>
-            <button
-              className={`tab-button${activeTab === 'versions' ? ' is-active' : ''}`}
-              type="button"
-              onClick={() => setActiveTab('versions')}
-            >
-              Versions
-            </button>
-          </div>
-          {activeTab === 'files' ? (
-            <div className="tab-body">
-              <div>
-                <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-                  SKILL.md
-                </h2>
-                <div className="markdown">
-                  {readmeContent ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{readmeContent}</ReactMarkdown>
-                  ) : readmeError ? (
-                    <div className="stat">Failed to load SKILL.md: {readmeError}</div>
-                  ) : (
-                    <div>Loading…</div>
-                  )}
-                </div>
-              </div>
-              <div className="file-list">
-                <div className="file-list-header">
-                  <h3 className="section-title" style={{ fontSize: '1.05rem', margin: 0 }}>
-                    Files
-                  </h3>
-                  <span className="section-subtitle" style={{ margin: 0 }}>
-                    {latestFiles.length} total
-                  </span>
-                </div>
-                <div className="file-list-body">
-                  {latestFiles.length === 0 ? (
-                    <div className="stat">No files available.</div>
-                  ) : (
-                    latestFiles.map((file) => (
-                      <div key={file.path} className="file-row">
-                        <span className="file-path">{file.path}</span>
-                        <span className="file-meta">{formatBytes(file.size)}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-          {activeTab === 'compare' && skill ? (
-            <div className="tab-body">
-              <SkillDiffCard skill={skill} versions={diffVersions ?? []} variant="embedded" />
-            </div>
-          ) : null}
-          {activeTab === 'versions' ? (
-            <div className="tab-body">
-              <div>
-                <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-                  Versions
-                </h2>
-                <p className="section-subtitle" style={{ margin: 0 }}>
-                  {nixPlugin
-                    ? 'Review release history and changelog.'
-                    : 'Download older releases or scan the changelog.'}
-                </p>
-              </div>
-              <div className="version-scroll">
-                <div className="version-list">
-                  {(versions ?? []).map((version) => (
-                    <div key={version._id} className="version-row">
-                      <div className="version-info">
-                        <div>
-                          v{version.version} · {new Date(version.createdAt).toLocaleDateString()}
-                          {version.changelogSource === 'auto' ? (
-                            <span style={{ color: 'var(--ink-soft)' }}> · auto</span>
-                          ) : null}
-                        </div>
-                        <div style={{ color: '#5c554e', whiteSpace: 'pre-wrap' }}>
-                          {version.changelog}
-                        </div>
-                      </div>
-                      {!nixPlugin ? (
-                        <div className="version-actions">
-                          <a
-                            className="btn version-zip"
-                            href={`${import.meta.env.VITE_CONVEX_SITE_URL}/api/v1/download?slug=${skill.slug}&version=${version.version}`}
-                          >
-                            Zip
-                          </a>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <div className="card">
-          <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-            Comments
-          </h2>
-          {isAuthenticated ? (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                if (!comment.trim()) return
-                void addComment({ skillId: skill._id, body: comment.trim() }).then(() =>
-                  setComment(''),
-                )
-              }}
-              className="comment-form"
-            >
-              <textarea
-                className="comment-input"
-                rows={4}
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                placeholder="Leave a note…"
-              />
-              <button className="btn comment-submit" type="submit">
-                Post comment
-              </button>
-            </form>
-          ) : (
-            <p className="section-subtitle">Sign in to comment.</p>
-          )}
-          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-            {(comments ?? []).length === 0 ? (
-              <div className="stat">No comments yet.</div>
-            ) : (
-              (comments ?? []).map((entry) => (
-                <div key={entry.comment._id} className="stat" style={{ alignItems: 'flex-start' }}>
-                  <div>
-                    <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
-                    <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
-                  </div>
-                  {isAuthenticated &&
-                  me &&
-                  (me._id === entry.comment.userId ||
-                    me.role === 'admin' ||
-                    me.role === 'moderator') ? (
-                    <button
-                      className="btn"
-                      type="button"
-                      onClick={() => void removeComment({ commentId: entry.comment._id })}
-                    >
-                      Delete
-                    </button>
-                  ) : null}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <SkillDetailTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          readmeContent={readmeContent}
+          readmeError={readmeError}
+          latestFiles={latestFiles}
+          latestVersionId={latestVersion?._id ?? null}
+          skill={skill}
+          diffVersions={diffVersions}
+          versions={versions}
+          nixPlugin={Boolean(nixPlugin)}
+        />
+        <SkillCommentsPanel skillId={skill._id} isAuthenticated={isAuthenticated} me={me ?? null} />
       </div>
     </main>
   )
-}
-
-function buildSkillHref(ownerHandle: string | null, slug: string) {
-  if (ownerHandle) return `/${ownerHandle}/${slug}`
-  return `/skills/${slug}`
-}
-
-function formatConfigSnippet(raw: string) {
-  const trimmed = raw.trim()
-  if (!trimmed || raw.includes('\n')) return raw
-  try {
-    const parsed = JSON.parse(raw)
-    return JSON.stringify(parsed, null, 2)
-  } catch {
-    // fall through
-  }
-
-  let out = ''
-  let indent = 0
-  let inString = false
-  let isEscaped = false
-
-  const newline = () => {
-    out = out.replace(/[ \t]+$/u, '')
-    out += `\n${' '.repeat(indent * 2)}`
-  }
-
-  for (let i = 0; i < raw.length; i += 1) {
-    const ch = raw[i]
-    if (inString) {
-      out += ch
-      if (isEscaped) {
-        isEscaped = false
-      } else if (ch === '\\') {
-        isEscaped = true
-      } else if (ch === '"') {
-        inString = false
-      }
-      continue
-    }
-
-    if (ch === '"') {
-      inString = true
-      out += ch
-      continue
-    }
-
-    if (ch === '{' || ch === '[') {
-      out += ch
-      indent += 1
-      newline()
-      continue
-    }
-
-    if (ch === '}' || ch === ']') {
-      indent = Math.max(0, indent - 1)
-      newline()
-      out += ch
-      continue
-    }
-
-    if (ch === ';' || ch === ',') {
-      out += ch
-      newline()
-      continue
-    }
-
-    if (ch === '\n' || ch === '\r' || ch === '\t') {
-      continue
-    }
-
-    if (ch === ' ') {
-      if (out.endsWith(' ') || out.endsWith('\n')) {
-        continue
-      }
-      out += ' '
-      continue
-    }
-
-    out += ch
-  }
-
-  return out.trim()
-}
-
-function stripFrontmatter(content: string) {
-  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  if (!normalized.startsWith('---')) return content
-  const endIndex = normalized.indexOf('\n---', 3)
-  if (endIndex === -1) return content
-  return normalized.slice(endIndex + 4).replace(/^\n+/, '')
-}
-
-function formatOsList(os?: string[]) {
-  if (!os?.length) return []
-  return os.map((entry) => {
-    const key = entry.trim().toLowerCase()
-    if (key === 'darwin' || key === 'macos' || key === 'mac') return 'macOS'
-    if (key === 'linux') return 'Linux'
-    if (key === 'windows' || key === 'win32') return 'Windows'
-    return entry
-  })
-}
-
-function formatInstallLabel(spec: SkillInstallSpec) {
-  if (spec.kind === 'brew') return 'Homebrew'
-  if (spec.kind === 'node') return 'Node'
-  if (spec.kind === 'go') return 'Go'
-  if (spec.kind === 'uv') return 'uv'
-  return 'Install'
-}
-
-function formatInstallCommand(spec: SkillInstallSpec) {
-  if (spec.kind === 'brew' && spec.formula) {
-    if (spec.tap && !spec.formula.includes('/')) {
-      return `brew install ${spec.tap}/${spec.formula}`
-    }
-    return `brew install ${spec.formula}`
-  }
-  if (spec.kind === 'node' && spec.package) {
-    return `npm i -g ${spec.package}`
-  }
-  if (spec.kind === 'go' && spec.module) {
-    return `go install ${spec.module}`
-  }
-  if (spec.kind === 'uv' && spec.package) {
-    return `uv tool install ${spec.package}`
-  }
-  return null
-}
-
-function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes)) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  const units = ['KB', 'MB', 'GB']
-  let value = bytes / 1024
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex += 1
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`
-}
-
-function formatNixInstallSnippet(plugin: string) {
-  const snippet = `programs.clawdbot.plugins = [ { source = "${plugin}"; } ];`
-  return formatConfigSnippet(snippet)
 }
