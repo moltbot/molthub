@@ -375,6 +375,7 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
     if (!blob) return text('File missing in storage', 410, rate.headers)
     const textContent = await blob.text()
 
+    const isSvg = file.contentType?.toLowerCase().includes('svg')
     const headers = mergeHeaders(rate.headers, {
       'Content-Type': file.contentType
         ? `${file.contentType}; charset=utf-8`
@@ -383,6 +384,9 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       ETag: file.sha256,
       'X-Content-SHA256': file.sha256,
       'X-Content-Size': String(file.size),
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; media-src *",
+      ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
   }
@@ -984,6 +988,7 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
 
     void ctx.runMutation(api.soulDownloads.increment, { soulId: soulResult.soul._id })
 
+    const isSvg = file.contentType?.toLowerCase().includes('svg')
     const headers = mergeHeaders(rate.headers, {
       'Content-Type': file.contentType
         ? `${file.contentType}; charset=utf-8`
@@ -992,6 +997,9 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       ETag: file.sha256,
       'X-Content-SHA256': file.sha256,
       'X-Content-Size': String(file.size),
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; media-src *",
+      ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
   }
