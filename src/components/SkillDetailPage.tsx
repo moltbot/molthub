@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import type { MoltbotSkillMetadata, SkillInstallSpec } from 'molthub-schema'
 import { useAction, useMutation, useQuery } from 'convex/react'
+import type { MoltbotSkillMetadata, SkillInstallSpec } from 'molthub-schema'
 import { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -649,9 +649,7 @@ export function SkillDetailPage({
                     <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
                     <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
                   </div>
-                  {isAuthenticated &&
-                  me &&
-                  (me._id === entry.comment.userId || isModerator(me)) ? (
+                  {isAuthenticated && me && (me._id === entry.comment.userId || isModerator(me)) ? (
                     <button
                       className="btn"
                       type="button"

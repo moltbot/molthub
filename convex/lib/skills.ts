@@ -1,8 +1,8 @@
 import {
+  isTextContentType,
   type MoltbotConfigSpec,
   type MoltbotSkillMetadata,
   MoltbotSkillMetadataSchema,
-  isTextContentType,
   type NixPluginSpec,
   parseArk,
   type SkillInstallSpec,

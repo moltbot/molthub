@@ -672,9 +672,10 @@ export const backfillSkillBadges: ReturnType<typeof action> = action({
   handler: async (ctx, args): Promise<BadgeBackfillActionResult> => {
     const { user } = await requireUserFromAction(ctx)
     assertRole(user, ['admin'])
-    return ctx.runAction(internal.maintenance.backfillSkillBadgesInternal, args) as Promise<
-      BadgeBackfillActionResult
-    >
+    return ctx.runAction(
+      internal.maintenance.backfillSkillBadgesInternal,
+      args,
+    ) as Promise<BadgeBackfillActionResult>
   },
 })
 
@@ -771,15 +772,12 @@ export async function backfillSkillBadgeTableInternalHandler(
       if (dryRun) continue
 
       for (const entry of entries) {
-        const result = await ctx.runMutation(
-          internal.maintenance.upsertSkillBadgeRecordInternal,
-          {
-            skillId: item.skillId,
-            kind: entry.kind,
-            byUserId: entry.byUserId,
-            at: entry.at,
-          },
-        )
+        const result = await ctx.runMutation(internal.maintenance.upsertSkillBadgeRecordInternal, {
+          skillId: item.skillId,
+          kind: entry.kind,
+          byUserId: entry.byUserId,
+          at: entry.at,
+        })
         if (result.inserted) {
           totals.recordsInserted++
         }
@@ -814,9 +812,10 @@ export const backfillSkillBadgeTable: ReturnType<typeof action> = action({
   handler: async (ctx, args): Promise<SkillBadgeTableBackfillActionResult> => {
     const { user } = await requireUserFromAction(ctx)
     assertRole(user, ['admin'])
-    return ctx.runAction(internal.maintenance.backfillSkillBadgeTableInternal, args) as Promise<
-      SkillBadgeTableBackfillActionResult
-    >
+    return ctx.runAction(
+      internal.maintenance.backfillSkillBadgeTableInternal,
+      args,
+    ) as Promise<SkillBadgeTableBackfillActionResult>
   },
 })
 

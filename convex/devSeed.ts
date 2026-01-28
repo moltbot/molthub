@@ -3,7 +3,7 @@ import { internal } from './_generated/api'
 import type { ActionCtx } from './_generated/server'
 import { internalAction, internalMutation } from './_generated/server'
 import { EMBEDDING_DIMENSIONS } from './lib/embeddings'
-import { parseMoltbotMetadata, parseFrontmatter } from './lib/skills'
+import { parseFrontmatter, parseMoltbotMetadata } from './lib/skills'
 
 type SeedSkillSpec = {
   slug: string

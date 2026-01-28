@@ -5,8 +5,8 @@ import {
   getFrontmatterValue,
   hashSkillFiles,
   isTextFile,
-  parseMoltbotMetadata,
   parseFrontmatter,
+  parseMoltbotMetadata,
   sanitizePath,
 } from './skills'
 

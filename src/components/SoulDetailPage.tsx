@@ -234,9 +234,7 @@ export function SoulDetailPage({ slug }: SoulDetailPageProps) {
                     <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
                     <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
                   </div>
-                  {isAuthenticated &&
-                  me &&
-                  (me._id === entry.comment.userId || isModerator(me)) ? (
+                  {isAuthenticated && me && (me._id === entry.comment.userId || isModerator(me)) ? (
                     <button
                       className="btn"
                       type="button"

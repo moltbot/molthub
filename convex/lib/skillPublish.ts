@@ -3,16 +3,16 @@ import semver from 'semver'
 import { api, internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { ActionCtx, MutationCtx } from '../_generated/server'
+import { getSkillBadgeMap, isSkillHighlighted } from './badges'
 import { generateChangelogForPublish } from './changelog'
 import { generateEmbedding } from './embeddings'
-import { getSkillBadgeMap, isSkillHighlighted } from './badges'
 import {
   buildEmbeddingText,
   getFrontmatterMetadata,
   hashSkillFiles,
   isTextFile,
-  parseMoltbotMetadata,
   parseFrontmatter,
+  parseMoltbotMetadata,
   sanitizePath,
 } from './skills'
 import type { WebhookSkillPayload } from './webhooks'

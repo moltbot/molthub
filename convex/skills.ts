@@ -301,8 +301,7 @@ export const listWithLatest = query({
     const ordered =
       args.batch === 'highlighted'
         ? [...withBadges].sort(
-            (a, b) =>
-              (b.badges?.highlighted?.at ?? 0) - (a.badges?.highlighted?.at ?? 0),
+            (a, b) => (b.badges?.highlighted?.at ?? 0) - (a.badges?.highlighted?.at ?? 0),
           )
         : withBadges
     const limited = ordered.slice(0, limit)
@@ -327,8 +326,9 @@ export const listForManagement = query({
     const limit = clampInt(args.limit ?? 50, 1, MAX_LIST_BULK_LIMIT)
     const takeLimit = Math.min(limit * 5, MAX_LIST_TAKE)
     const entries = await ctx.db.query('skills').order('desc').take(takeLimit)
-    const filtered = (args.includeDeleted ? entries : entries.filter((skill) => !skill.softDeletedAt))
-      .slice(0, limit)
+    const filtered = (
+      args.includeDeleted ? entries : entries.filter((skill) => !skill.softDeletedAt)
+    ).slice(0, limit)
     return buildManagementSkillEntries(ctx, filtered)
   },
 })
@@ -339,7 +339,10 @@ export const listRecentVersions = query({
     const { user } = await requireUser(ctx)
     assertModerator(user)
     const limit = clampInt(args.limit ?? 20, 1, MAX_LIST_BULK_LIMIT)
-    const versions = await ctx.db.query('skillVersions').order('desc').take(limit * 2)
+    const versions = await ctx.db
+      .query('skillVersions')
+      .order('desc')
+      .take(limit * 2)
     const entries = versions.filter((version) => !version.softDeletedAt).slice(0, limit)
 
     const results: Array<{

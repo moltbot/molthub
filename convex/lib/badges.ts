@@ -3,9 +3,7 @@ import type { QueryCtx } from '../_generated/server'
 
 type BadgeKind = Doc<'skillBadges'>['kind']
 
-export type SkillBadgeMap = Partial<
-  Record<BadgeKind, { byUserId: Id<'users'>; at: number }>
->
+export type SkillBadgeMap = Partial<Record<BadgeKind, { byUserId: Id<'users'>; at: number }>>
 
 export type SkillBadgeSource = { badges?: SkillBadgeMap | null }
 

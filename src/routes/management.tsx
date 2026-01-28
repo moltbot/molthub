@@ -67,14 +67,12 @@ function Management() {
     api.skills.getBySlug,
     staff && selectedSlug ? { slug: selectedSlug } : 'skip',
   ) as SkillBySlugResult | undefined
-  const recentVersions = useQuery(
-    api.skills.listRecentVersions,
-    staff ? { limit: 20 } : 'skip',
-  ) as RecentVersionEntry[] | undefined
-  const reportedSkills = useQuery(
-    api.skills.listReportedSkills,
-    staff ? { limit: 25 } : 'skip',
-  ) as ManagementSkillEntry[] | undefined
+  const recentVersions = useQuery(api.skills.listRecentVersions, staff ? { limit: 20 } : 'skip') as
+    | RecentVersionEntry[]
+    | undefined
+  const reportedSkills = useQuery(api.skills.listReportedSkills, staff ? { limit: 25 } : 'skip') as
+    | ManagementSkillEntry[]
+    | undefined
   const duplicateCandidates = useQuery(
     api.skills.listDuplicateCandidates,
     staff ? { limit: 20 } : 'skip',
@@ -96,7 +94,7 @@ function Management() {
     if (!selectedSkill?.skill) return
     setSelectedDuplicate(selectedSkill.canonical?.skill?.slug ?? '')
     setSelectedOwner(String(selectedSkill.skill.ownerUserId))
-  }, [selectedSkill?.skill?._id])
+  }, [selectedSkill])
 
   if (!staff) {
     return (
@@ -129,7 +127,10 @@ function Management() {
           ) : (
             reportedSkills.map((entry) => {
               const { skill, latestVersion, owner } = entry
-              const ownerParam = resolveOwnerParam(owner?.handle ?? null, owner?._id ?? skill.ownerUserId)
+              const ownerParam = resolveOwnerParam(
+                owner?.handle ?? null,
+                owner?._id ?? skill.ownerUserId,
+              )
               return (
                 <div key={skill._id} className="management-item">
                   <div className="management-item-main">
@@ -139,7 +140,9 @@ function Management() {
                     <div className="section-subtitle" style={{ margin: 0 }}>
                       @{owner?.handle ?? owner?.name ?? 'user'} · v{latestVersion?.version ?? '—'} ·
                       {skill.reportCount ?? 0} report{(skill.reportCount ?? 0) === 1 ? '' : 's'}
-                      {skill.lastReportedAt ? ` · last ${formatTimestamp(skill.lastReportedAt)}` : ''}
+                      {skill.lastReportedAt
+                        ? ` · last ${formatTimestamp(skill.lastReportedAt)}`
+                        : ''}
                     </div>
                   </div>
                   <div className="management-actions">
@@ -191,9 +194,13 @@ function Management() {
             <div className="stat">Loading skill…</div>
           ) : !selectedSkill?.skill ? (
             <div className="stat">No skill found for "{selectedSlug}".</div>
-          ) : (() => {
+          ) : (
+            (() => {
               const { skill, latestVersion, owner, canonical } = selectedSkill
-              const ownerParam = resolveOwnerParam(owner?.handle ?? null, owner?._id ?? skill.ownerUserId)
+              const ownerParam = resolveOwnerParam(
+                owner?.handle ?? null,
+                owner?._id ?? skill.ownerUserId,
+              )
               const moderationStatus =
                 skill.moderationStatus ?? (skill.softDeletedAt ? 'hidden' : 'active')
               const isHighlighted = isSkillHighlighted(skill)
@@ -273,7 +280,11 @@ function Management() {
                     </div>
                   </div>
                   <div className="management-actions">
-                    <Link className="btn" to="/$owner/$slug" params={{ owner: ownerParam, slug: skill.slug }}>
+                    <Link
+                      className="btn"
+                      to="/$owner/$slug"
+                      params={{ owner: ownerParam, slug: skill.slug }}
+                    >
                       View
                     </Link>
                     <button
@@ -340,7 +351,8 @@ function Management() {
                   </div>
                 </div>
               )
-            })()}
+            })()
+          )}
         </div>
       </div>
 
@@ -368,8 +380,9 @@ function Management() {
                     {entry.skill.displayName}
                   </Link>
                   <div className="section-subtitle" style={{ margin: 0 }}>
-                    @{entry.owner?.handle ?? entry.owner?.name ?? 'user'} ·
-                    v{entry.latestVersion?.version ?? '—'} · fingerprint {entry.fingerprint?.slice(0, 8)}
+                    @{entry.owner?.handle ?? entry.owner?.name ?? 'user'} · v
+                    {entry.latestVersion?.version ?? '—'} · fingerprint{' '}
+                    {entry.fingerprint?.slice(0, 8)}
                   </div>
                   <div className="management-sublist">
                     {entry.matches.map((match) => (
@@ -377,7 +390,8 @@ function Management() {
                         <div>
                           <strong>{match.skill.displayName}</strong>
                           <div className="section-subtitle" style={{ margin: 0 }}>
-                            @{match.owner?.handle ?? match.owner?.name ?? 'user'} · {match.skill.slug}
+                            @{match.owner?.handle ?? match.owner?.name ?? 'user'} ·{' '}
+                            {match.skill.slug}
                           </div>
                         </div>
                         <div className="management-actions">

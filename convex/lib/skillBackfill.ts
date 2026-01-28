@@ -2,8 +2,8 @@ import {
   getFrontmatterMetadata,
   getFrontmatterValue,
   type ParsedSkillFrontmatter,
-  parseMoltbotMetadata,
   parseFrontmatter,
+  parseMoltbotMetadata,
 } from './skills'
 
 export type ParsedSkillData = {
