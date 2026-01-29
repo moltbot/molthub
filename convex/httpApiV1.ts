@@ -375,7 +375,10 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
     if (!blob) return text('File missing in storage', 410, rate.headers)
     const textContent = await blob.text()
 
-    const isSvg = file.contentType?.toLowerCase().includes('svg')
+    const isSvg =
+      file.contentType?.toLowerCase().includes('svg') ||
+      file.path.toLowerCase().endsWith('.svg')
+
     const headers = mergeHeaders(rate.headers, {
       'Content-Type': file.contentType
         ? `${file.contentType}; charset=utf-8`
@@ -385,7 +388,11 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       'X-Content-SHA256': file.sha256,
       'X-Content-Size': String(file.size),
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; media-src *",
+      'X-Frame-Options': 'DENY',
+      // For any text response that a browser might try to render, lock it down.
+      // In particular, this prevents SVG <foreignObject> script execution from
+      // reading localStorage tokens on this origin.
+      'Content-Security-Policy': "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
@@ -988,7 +995,10 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
 
     void ctx.runMutation(api.soulDownloads.increment, { soulId: soulResult.soul._id })
 
-    const isSvg = file.contentType?.toLowerCase().includes('svg')
+    const isSvg =
+      file.contentType?.toLowerCase().includes('svg') ||
+      file.path.toLowerCase().endsWith('.svg')
+
     const headers = mergeHeaders(rate.headers, {
       'Content-Type': file.contentType
         ? `${file.contentType}; charset=utf-8`
@@ -998,7 +1008,11 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       'X-Content-SHA256': file.sha256,
       'X-Content-Size': String(file.size),
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; media-src *",
+      'X-Frame-Options': 'DENY',
+      // For any text response that a browser might try to render, lock it down.
+      // In particular, this prevents SVG <foreignObject> script execution from
+      // reading localStorage tokens on this origin.
+      'Content-Security-Policy': "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
