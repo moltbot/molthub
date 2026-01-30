@@ -67,7 +67,7 @@ describe('payload building', () => {
       { slug: 'beeper', displayName: 'Beeper', ownerHandle: 'KrauseFx' },
       'https://clawhub.ai',
     )
-    expect(url).toBe('https://clawhub.ai/KrauseFx/beeper')
+    expect(url).toBe('https://clawhub.ai/skills/KrauseFx/beeper')
   })
 
   it('builds a publish embed', () => {

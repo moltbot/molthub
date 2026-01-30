@@ -126,7 +126,7 @@ describe('Upload route', () => {
     fireEvent.change(input, { target: { files: [zipFile] } })
 
     expect(await screen.findByText('notes.txt', {}, { timeout: 3000 })).toBeTruthy()
-    expect(screen.getByText('SKILL.md')).toBeTruthy()
+    expect(screen.getAllByText('SKILL.md').length).toBeGreaterThan(0)
     expect(await screen.findByText(/All checks passed/i, {}, { timeout: 3000 })).toBeTruthy()
   })
 
@@ -153,7 +153,7 @@ describe('Upload route', () => {
     const input = screen.getByTestId('upload-input') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
 
-    expect(await screen.findByText('SKILL.md')).toBeTruthy()
+    expect((await screen.findAllByText('SKILL.md')).length).toBeGreaterThan(0)
     expect(await screen.findByText(/All checks passed/i)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /publish/i }))

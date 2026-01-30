@@ -93,6 +93,8 @@ function toPublicExtension(
   resource: (Doc<'resources'> & { badges?: ResourceBadgeMap }) | null | undefined,
 ): PublicExtension | null {
   if (!resource || resource.softDeletedAt || resource.type !== 'extension') return null
+  if (resource.moderationStatus && resource.moderationStatus !== 'active') return null
+  if (resource.moderationFlags?.includes('blocked.malware')) return null
   return {
     _id: resource._id,
     _creationTime: resource._creationTime,

@@ -3,6 +3,21 @@ import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { api } from '../../convex/_generated/api'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
+import { PageShell } from '../components/PageShell'
+import { SectionHeader } from '../components/SectionHeader'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import {
   getSkillBadges,
   isSkillDeprecated,
@@ -12,21 +27,6 @@ import {
 } from '../lib/badges'
 import type { PublicSkill } from '../lib/publicUser'
 import { isAdmin, isModerator } from '../lib/roles'
-import { PageShell } from '../components/PageShell'
-import { SectionHeader } from '../components/SectionHeader'
-import { Badge } from '../components/ui/badge'
-import { Button } from '../components/ui/button'
-import { Card } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useAuthStatus } from '../lib/useAuthStatus'
 
 type ReportedSkillEntry = {
@@ -100,7 +100,13 @@ function Moderation() {
   const lookupUserSkills = useQuery(
     api.skills.listWithLatest,
     lookupUserResult ? { ownerUserId: lookupUserResult._id, limit: 25 } : 'skip',
-  ) as Array<{ skill: PublicSkill; latestVersion: Doc<'skillVersions'> | null; ownerHandle?: string | null }> | undefined
+  ) as
+    | Array<{
+        skill: PublicSkill
+        latestVersion: Doc<'skillVersions'> | null
+        ownerHandle?: string | null
+      }>
+    | undefined
 
   const findSimilarSkills = useAction(api.skills.findSimilarSkills)
   const [similarSkills, setSimilarSkills] = useState<SimilarSkillEntry[] | null>(null)
@@ -207,7 +213,8 @@ function Moderation() {
                         </Link>
                         <div className="text-xs text-muted-foreground">
                           @{owner?.handle ?? owner?.name ?? 'user'} · v
-                          {latestVersion?.version ?? '—'} · updated {formatTimestamp(skill.updatedAt)}
+                          {latestVersion?.version ?? '—'} · updated{' '}
+                          {formatTimestamp(skill.updatedAt)}
                           {badges.length ? ` · ${badges.join(', ').toLowerCase()}` : ''}
                         </div>
                         {skill.moderationFlags?.length ? (
@@ -226,7 +233,10 @@ function Moderation() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            void setSoftDeleted({ skillId: skill._id, deleted: !skill.softDeletedAt })
+                            void setSoftDeleted({
+                              skillId: skill._id,
+                              deleted: !skill.softDeletedAt,
+                            })
                           }
                         >
                           {skill.softDeletedAt ? 'Restore' : 'Hide'}
@@ -298,9 +308,13 @@ function Moderation() {
                           </Button>
                           {similarForSkill === skill._id ? (
                             isLoadingSimilar ? (
-                              <div className="text-xs text-muted-foreground">Loading similar skills…</div>
+                              <div className="text-xs text-muted-foreground">
+                                Loading similar skills…
+                              </div>
                             ) : !similarSkills ? null : similarSkills.length === 0 ? (
-                              <div className="text-xs text-muted-foreground">No similar skills found.</div>
+                              <div className="text-xs text-muted-foreground">
+                                No similar skills found.
+                              </div>
                             ) : (
                               <div className="space-y-2">
                                 {similarSkills.map((entry) => (
@@ -320,7 +334,8 @@ function Moderation() {
                                     </Link>
                                     <div className="text-muted-foreground">
                                       @{entry.ownerHandle ?? 'user'} · v
-                                      {entry.latestVersion?.version ?? '—'} · score {entry.score.toFixed(3)}
+                                      {entry.latestVersion?.version ?? '—'} · score{' '}
+                                      {entry.score.toFixed(3)}
                                     </div>
                                   </div>
                                 ))}
@@ -330,8 +345,14 @@ function Moderation() {
                         </div>
                         {admin ? (
                           <div className="space-y-2">
-                            <label className="text-xs font-medium">Owner handle</label>
+                            <label
+                              className="text-xs font-medium"
+                              htmlFor="moderation-owner-handle"
+                            >
+                              Owner handle
+                            </label>
                             <Input
+                              id="moderation-owner-handle"
                               value={lookupOwnerHandle}
                               onChange={(event) => setLookupOwnerHandle(event.target.value)}
                               placeholder="new owner handle"
@@ -439,7 +460,10 @@ function Moderation() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              void setSoftDeleted({ skillId: skill._id, deleted: !skill.softDeletedAt })
+                              void setSoftDeleted({
+                                skillId: skill._id,
+                                deleted: !skill.softDeletedAt,
+                              })
                             }
                           >
                             {skill.softDeletedAt ? 'Restore' : 'Hide'}
@@ -507,7 +531,10 @@ function Moderation() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              void setSoftDeleted({ skillId: skill._id, deleted: !skill.softDeletedAt })
+                              void setSoftDeleted({
+                                skillId: skill._id,
+                                deleted: !skill.softDeletedAt,
+                              })
                             }
                           >
                             {skill.softDeletedAt ? 'Restore' : 'Hide'}
@@ -534,15 +561,17 @@ function Moderation() {
             </Card>
           </TabsContent>
 
-
           <TabsContent value="lookup" className="space-y-6">
             <Card className="space-y-4 p-6">
               <h2 className="font-display text-lg font-semibold">Lookup</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Skill slug</label>
+                  <label className="text-xs font-medium" htmlFor="moderation-skill-slug">
+                    Skill slug
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     <Input
+                      id="moderation-skill-slug"
                       value={lookupSkill}
                       onChange={(event) => setLookupSkill(event.target.value)}
                       placeholder="skill slug"
@@ -567,9 +596,12 @@ function Moderation() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">User handle</label>
+                  <label className="text-xs font-medium" htmlFor="moderation-user-handle">
+                    User handle
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     <Input
+                      id="moderation-user-handle"
                       value={lookupUser}
                       onChange={(event) => setLookupUser(event.target.value)}
                       placeholder="user handle"

@@ -17,6 +17,8 @@ function buildSkillResource(skill: Doc<'skills'>, ownerHandle?: string): Resourc
     ownerUserId: skill.ownerUserId,
     ownerHandle,
     softDeletedAt: skill.softDeletedAt,
+    moderationStatus: skill.moderationStatus,
+    moderationFlags: skill.moderationFlags,
     statsDownloads: skill.statsDownloads,
     statsStars: skill.statsStars,
     statsInstallsCurrent: skill.statsInstallsCurrent,
@@ -36,6 +38,8 @@ function buildSoulResource(soul: Doc<'souls'>, ownerHandle?: string): ResourceIn
     ownerUserId: soul.ownerUserId,
     ownerHandle,
     softDeletedAt: soul.softDeletedAt,
+    moderationStatus: soul.moderationStatus,
+    moderationFlags: soul.moderationFlags,
     statsDownloads: soul.stats.downloads,
     statsStars: soul.stats.stars,
     statsInstallsCurrent: undefined,
@@ -56,7 +60,8 @@ export async function upsertResourceForSkill(
   skill: Doc<'skills'>,
   overrides?: Partial<ResourceInsert>,
 ) {
-  const resolvedOwnerHandle = overrides?.ownerHandle ?? (await resolveOwnerHandle(ctx, skill.ownerUserId))
+  const resolvedOwnerHandle =
+    overrides?.ownerHandle ?? (await resolveOwnerHandle(ctx, skill.ownerUserId))
   if (skill.resourceId) {
     const existing = await ctx.db.get(skill.resourceId)
     if (existing) {
@@ -78,7 +83,8 @@ export async function upsertResourceForSoul(
   soul: Doc<'souls'>,
   overrides?: Partial<ResourceInsert>,
 ) {
-  const resolvedOwnerHandle = overrides?.ownerHandle ?? (await resolveOwnerHandle(ctx, soul.ownerUserId))
+  const resolvedOwnerHandle =
+    overrides?.ownerHandle ?? (await resolveOwnerHandle(ctx, soul.ownerUserId))
   if (soul.resourceId) {
     const existing = await ctx.db.get(soul.resourceId)
     if (existing) {

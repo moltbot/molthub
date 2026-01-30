@@ -78,9 +78,14 @@ export function toPublicSkill(
 }
 
 export function toPublicSoul(
-  soul: (Doc<'souls'> & { stats?: Doc<'souls'>['stats']; badges?: ResourceBadgeMap }) | null | undefined,
+  soul:
+    | (Doc<'souls'> & { stats?: Doc<'souls'>['stats']; badges?: ResourceBadgeMap })
+    | null
+    | undefined,
 ): PublicSoul | null {
   if (!soul || soul.softDeletedAt) return null
+  if (soul.moderationStatus && soul.moderationStatus !== 'active') return null
+  if (soul.moderationFlags?.includes('blocked.malware')) return null
   return {
     _id: soul._id,
     _creationTime: soul._creationTime,

@@ -4,7 +4,7 @@ import { Menu, Monitor, Moon, Sun } from 'lucide-react'
 import { useMemo, useRef } from 'react'
 import { gravatarUrl } from '../lib/gravatar'
 import { isModerator } from '../lib/roles'
-import { getMoltHubSiteUrl, getSiteMode, getSiteName } from '../lib/site'
+import { getOpenClawSiteUrl, getSiteMode, getSiteName } from '../lib/site'
 import { applyTheme, useThemeMode } from '../lib/theme'
 import { startThemeTransition } from '../lib/theme-transition'
 import { useAuthStatus } from '../lib/useAuthStatus'
@@ -35,7 +35,7 @@ export default function Header() {
   const siteMode = getSiteMode()
   const siteName = useMemo(() => getSiteName(siteMode), [siteMode])
   const isSoulMode = siteMode === 'souls'
-  const moltHubUrl = getMoltHubSiteUrl()
+  const moltHubUrl = getOpenClawSiteUrl()
 
   const avatar = me?.image ?? (me?.email ? gravatarUrl(me.email) : undefined)
   const handle = me?.handle ?? me?.displayName ?? 'user'
@@ -56,9 +56,7 @@ export default function Header() {
   }
 
   const navLinks = [
-    ...(isSoulMode
-      ? ([{ href: moltHubUrl, label: 'MoltHub' }] as const)
-      : ([] as const)),
+    ...(isSoulMode ? ([{ href: moltHubUrl, label: 'MoltHub' }] as const) : ([] as const)),
     {
       label: isSoulMode ? 'Souls' : 'Skills',
       to: isSoulMode ? '/souls' : '/skills',
@@ -85,9 +83,7 @@ export default function Header() {
       to: '/upload',
       search: { updateSlug: undefined },
     },
-    ...(isSoulMode
-      ? ([] as const)
-      : ([{ label: 'Import', to: '/import' }] as const)),
+    ...(isSoulMode ? ([] as const) : ([{ label: 'Import', to: '/import' }] as const)),
     {
       label: 'Search',
       to: isSoulMode ? '/souls' : '/skills',

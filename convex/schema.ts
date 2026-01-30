@@ -33,6 +33,10 @@ const resources = defineTable({
   ownerUserId: v.id('users'),
   ownerHandle: v.optional(v.string()),
   softDeletedAt: v.optional(v.number()),
+  moderationStatus: v.optional(
+    v.union(v.literal('active'), v.literal('hidden'), v.literal('removed')),
+  ),
+  moderationFlags: v.optional(v.array(v.string())),
   statsDownloads: v.optional(v.number()),
   statsStars: v.optional(v.number()),
   statsInstallsCurrent: v.optional(v.number()),
@@ -129,6 +133,10 @@ const souls = defineTable({
   latestVersionId: v.optional(v.id('soulVersions')),
   tags: v.record(v.string(), v.id('soulVersions')),
   softDeletedAt: v.optional(v.number()),
+  moderationStatus: v.optional(
+    v.union(v.literal('active'), v.literal('hidden'), v.literal('removed')),
+  ),
+  moderationFlags: v.optional(v.array(v.string())),
   stats: v.object({
     downloads: v.number(),
     stars: v.number(),

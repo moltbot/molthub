@@ -60,7 +60,7 @@ function CliAuth() {
       setStatus(message)
       setToken(null)
     })
-  }, [createToken, isAuthenticated, label, me, redirectUri, safeRedirect, state, registry])
+  }, [createToken, isAuthenticated, label, me, redirectUri, safeRedirect, state])
 
   if (!safeRedirect) {
     return (
@@ -69,7 +69,9 @@ function CliAuth() {
           <Card className="space-y-3 p-6">
             <SectionHeader title="CLI login" />
             <p className="text-sm text-muted-foreground">Invalid redirect URL.</p>
-            <p className="text-sm text-muted-foreground">Run the CLI again to start a fresh login.</p>
+            <p className="text-sm text-muted-foreground">
+              Run the CLI again to start a fresh login.
+            </p>
           </Card>
         </PageShell>
       </main>
@@ -83,7 +85,9 @@ function CliAuth() {
           <Card className="space-y-3 p-6">
             <SectionHeader title="CLI login" />
             <p className="text-sm text-muted-foreground">Missing state.</p>
-            <p className="text-sm text-muted-foreground">Run the CLI again to start a fresh login.</p>
+            <p className="text-sm text-muted-foreground">
+              Run the CLI again to start a fresh login.
+            </p>
           </Card>
         </PageShell>
       </main>

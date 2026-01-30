@@ -97,12 +97,21 @@ function Settings() {
           <h2 className="font-display text-lg font-semibold">Profile</h2>
           <form className="space-y-4" onSubmit={onSave}>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Display name</label>
-              <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+              <label className="text-xs font-medium" htmlFor="settings-display-name">
+                Display name
+              </label>
+              <Input
+                id="settings-display-name"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Bio</label>
+              <label className="text-xs font-medium" htmlFor="settings-bio">
+                Bio
+              </label>
               <Textarea
+                id="settings-bio"
                 rows={5}
                 value={bio}
                 onChange={(event) => setBio(event.target.value)}
@@ -123,8 +132,11 @@ function Settings() {
           </p>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium">Label</label>
+            <label className="text-xs font-medium" htmlFor="settings-token-label">
+              Label
+            </label>
             <Input
+              id="settings-token-label"
               value={tokenLabel}
               onChange={(event) => setTokenLabel(event.target.value)}
               placeholder="CLI token"
@@ -178,7 +190,9 @@ function Settings() {
 
         <Card className="space-y-3 border border-destructive/40 bg-destructive/5 p-6">
           <h2 className="font-display text-lg font-semibold text-destructive">Danger zone</h2>
-          <p className="text-sm text-muted-foreground">Soft delete your account. Skills remain public.</p>
+          <p className="text-sm text-muted-foreground">
+            Soft delete your account. Skills remain public.
+          </p>
           <Button type="button" variant="destructive" onClick={() => void onDelete()}>
             Delete account
           </Button>

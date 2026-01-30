@@ -34,10 +34,7 @@ function mergeResourceIntoSoul(soul: Doc<'souls'>, resource: Doc<'resources'>) {
   }
 }
 
-async function buildPublicSoulEntriesFromResources(
-  ctx: QueryCtx,
-  resources: Doc<'resources'>[],
-) {
+async function buildPublicSoulEntriesFromResources(ctx: QueryCtx, resources: Doc<'resources'>[]) {
   const validEntries = await Promise.all(
     resources.map(async (resource) => {
       const soul = await ctx.db
@@ -74,8 +71,12 @@ async function buildPublicSoulEntriesFromResources(
   )
 
   return hydrated.filter(
-    (entry): entry is { soul: NonNullable<ReturnType<typeof toPublicSoul>>; latestVersion: Doc<'soulVersions'> | null } =>
-      Boolean(entry),
+    (
+      entry,
+    ): entry is {
+      soul: NonNullable<ReturnType<typeof toPublicSoul>>
+      latestVersion: Doc<'soulVersions'> | null
+    } => Boolean(entry),
   )
 }
 
@@ -468,6 +469,7 @@ export const insertVersion = internalMutation({
         ownerUserId: userId,
         ownerHandle: user.handle ?? user._id,
         softDeletedAt: undefined,
+        moderationStatus: 'active',
         statsDownloads: 0,
         statsStars: 0,
         statsInstallsCurrent: undefined,
@@ -490,6 +492,7 @@ export const insertVersion = internalMutation({
         latestVersionId: undefined,
         tags: {},
         softDeletedAt: undefined,
+        moderationStatus: 'active',
         stats: {
           downloads: 0,
           stars: 0,
