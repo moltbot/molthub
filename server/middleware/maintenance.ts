@@ -60,10 +60,55 @@ export default defineEventHandler(async (event) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Maintenance</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: "Manrope", system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at top, #1f2937, #0f172a 55%, #0b1020);
+        color: #e2e8f0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem;
+      }
+      .card {
+        max-width: 520px;
+        width: 100%;
+        padding: 2.5rem;
+        border-radius: 20px;
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        text-align: left;
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #cbd5f5;
+      }
+      .meta {
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+      }
+    </style>
   </head>
-  <body style="font-family: system-ui, sans-serif; padding: 2rem;">
-    <h1>We’ll be right back.</h1>
-    <p>${message}</p>
+  <body>
+    <div class="card">
+      <h1>We’ll be right back.</h1>
+      <p>${message}</p>
+      <div class="meta">Thanks for your patience while we finish maintenance.</div>
+    </div>
   </body>
 </html>`
 })
