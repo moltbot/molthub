@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { getResourceBadge, getResourceLabel, getResourceLink, getResourceOwner, toCanonicalResourcePath } from './resources'
+import {
+  getResourceBadge,
+  getResourceLabel,
+  getResourceLink,
+  getResourceOwner,
+  toCanonicalResourcePath,
+} from './resources'
 
 const makeBadge = (kind: string) => ({ byUserId: 'users:1', at: 123, kind })
 
