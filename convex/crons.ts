@@ -31,11 +31,9 @@ crons.interval(
   {},
 )
 
-crons.interval(
-  'skill-automod',
-  { minutes: 15 },
-  internal.automod.runSkillAutomodInternal,
-  { batchSize: 25, maxBatches: 4 },
-)
+crons.interval('skill-automod', { minutes: 15 }, internal.automod.runSkillAutomodInternal, {
+  batchSize: 25,
+  maxBatches: 4,
+})
 
 export default crons
