@@ -11,7 +11,8 @@ import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
 import { internalAction, internalMutation } from './_generated/server'
-import { parseClawdisMetadata, parseFrontmatter } from './lib/skills'
+import { parseFrontmatter, parseMoltbotMetadata } from './lib/skills'
+import { upsertResourceForSkill } from './lib/resource'
 
 type SeedSkillSpec = {
   slug: string
@@ -66,7 +67,7 @@ Use this skill to ${summary.toLowerCase()}.
     summary,
     version: '0.1.0',
     metadata: {
-      clawdbot: {
+      moltbot: {
         nix: {
           plugin: `github:example/${slug}`,
           systems: ['aarch64-darwin', 'x86_64-linux'],
@@ -478,19 +479,29 @@ export const applyRandomStats = internalMutation({
     }),
   },
   handler: async (ctx, args) => {
+    const skill = await ctx.db.get(args.skillId)
+    if (!skill) return
+    const nextStats = {
+      downloads: args.stats.downloads,
+      stars: args.stats.stars,
+      installsCurrent: args.stats.installsCurrent,
+      installsAllTime: args.stats.installsAllTime,
+      versions: 1,
+      comments: 0,
+    }
     await ctx.db.patch(args.skillId, {
       statsDownloads: args.stats.downloads,
       statsStars: args.stats.stars,
       statsInstallsCurrent: args.stats.installsCurrent,
       statsInstallsAllTime: args.stats.installsAllTime,
-      stats: {
-        downloads: args.stats.downloads,
-        stars: args.stats.stars,
-        installsCurrent: args.stats.installsCurrent,
-        installsAllTime: args.stats.installsAllTime,
-        versions: 1,
-        comments: 0,
-      },
+      stats: nextStats,
+    })
+    await upsertResourceForSkill(ctx, skill, {
+      statsDownloads: args.stats.downloads,
+      statsStars: args.stats.stars,
+      statsInstallsCurrent: args.stats.installsCurrent,
+      statsInstallsAllTime: args.stats.installsAllTime,
+      stats: nextStats,
     })
   },
 })
@@ -505,7 +516,7 @@ export const seedExtraSkillsInternal = internalAction({
     for (const spec of EXTRA_SEED_SKILLS) {
       const skillMd = injectMetadata(spec.rawSkillMd, spec.metadata)
       const frontmatter = parseFrontmatter(skillMd)
-      const clawdis = parseClawdisMetadata(frontmatter)
+      const moltbot = parseMoltbotMetadata(frontmatter)
       const storageId = await ctx.storage.store(new Blob([skillMd], { type: 'text/markdown' }))
 
       const result = (await ctx.runMutation(internal.devSeed.seedSkillMutation, {
@@ -513,7 +524,7 @@ export const seedExtraSkillsInternal = internalAction({
         storageId,
         metadata: spec.metadata,
         frontmatter,
-        clawdis,
+        moltbot,
         skillMd,
         slug: spec.slug,
         displayName: spec.displayName,

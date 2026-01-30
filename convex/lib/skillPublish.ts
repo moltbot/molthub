@@ -3,10 +3,10 @@ import semver from 'semver'
 import { api, internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { ActionCtx, MutationCtx } from '../_generated/server'
-import { getSkillBadgeMap, isSkillHighlighted } from './badges'
+import { getResourceBadgeMap, isResourceHighlighted } from './badges'
 import { generateChangelogForPublish } from './changelog'
 import { generateEmbedding } from './embeddings'
-import type { PublicUser } from './public'
+import type { PublicSkill, PublicUser } from './public'
 import {
   buildEmbeddingText,
   getFrontmatterMetadata,
@@ -220,14 +220,16 @@ export async function queueHighlightedWebhook(ctx: MutationCtx, skillId: Id<'ski
   const owner = await ctx.db.get(skill.ownerUserId)
   const latestVersion = skill.latestVersionId ? await ctx.db.get(skill.latestVersionId) : null
 
-  const badges = await getSkillBadgeMap(ctx, skillId)
+  const badges = skill.resourceId
+    ? await getResourceBadgeMap(ctx, skill.resourceId)
+    : {}
   const payload: WebhookSkillPayload = {
     slug: skill.slug,
     displayName: skill.displayName,
     summary: skill.summary ?? undefined,
     version: latestVersion?.version ?? undefined,
     ownerHandle: owner?.handle ?? owner?.name ?? undefined,
-    highlighted: isSkillHighlighted({ badges }),
+    highlighted: isResourceHighlighted({ badges }),
     tags: Object.keys(skill.tags ?? {}),
   }
 
@@ -264,7 +266,7 @@ async function schedulePublishWebhook(
 ) {
   const result = (await ctx.runQuery(api.skills.getBySlug, {
     slug: params.slug,
-  })) as { skill: Doc<'skills'>; owner: PublicUser | null } | null
+  })) as { skill: PublicSkill; owner: PublicUser | null } | null
   if (!result?.skill) return
 
   const payload: WebhookSkillPayload = {
@@ -273,7 +275,7 @@ async function schedulePublishWebhook(
     summary: result.skill.summary ?? undefined,
     version: params.version,
     ownerHandle: result.owner?.handle ?? result.owner?.name ?? undefined,
-    highlighted: isSkillHighlighted(result.skill),
+    highlighted: isResourceHighlighted(result.skill),
     tags: Object.keys(result.skill.tags ?? {}),
   }
 

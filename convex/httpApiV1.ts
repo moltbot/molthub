@@ -1,4 +1,4 @@
-import { CliPublishRequestSchema, parseArk } from 'clawhub-schema'
+import { CliPublishRequestSchema, parseArk } from 'molthub-schema'
 import { api, internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
@@ -267,7 +267,7 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
         owner: result.owner
           ? {
               handle: result.owner.handle ?? null,
-              userId: result.owner._id,
+              userId: '_id' in result.owner ? result.owner._id : null,
               displayName: result.owner.displayName ?? null,
               image: result.owner.image ?? null,
             }
@@ -886,6 +886,7 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
         owner: result.owner
           ? {
               handle: result.owner.handle ?? null,
+              userId: '_id' in result.owner ? result.owner._id : null,
               displayName: result.owner.displayName ?? null,
               image: result.owner.image ?? null,
             }

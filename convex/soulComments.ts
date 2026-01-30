@@ -3,6 +3,7 @@ import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import { assertModerator, requireUser } from './lib/access'
 import { type PublicUser, toPublicUser } from './lib/public'
+import { upsertResourceForSoul } from './lib/resource'
 
 export const listBySoul = query({
   args: { soulId: v.id('souls'), limit: v.optional(v.number()) },
@@ -43,9 +44,22 @@ export const add = mutation({
       deletedBy: undefined,
     })
 
+    const now = Date.now()
+    const nextStats = { ...soul.stats, comments: soul.stats.comments + 1 }
     await ctx.db.patch(soul._id, {
-      stats: { ...soul.stats, comments: soul.stats.comments + 1 },
-      updatedAt: Date.now(),
+      stats: nextStats,
+      updatedAt: now,
+    })
+    await upsertResourceForSoul(ctx, soul, {
+      statsDownloads: nextStats.downloads,
+      statsStars: nextStats.stars,
+      stats: {
+        downloads: nextStats.downloads,
+        stars: nextStats.stars,
+        versions: nextStats.versions,
+        comments: nextStats.comments,
+      },
+      updatedAt: now,
     })
   },
 })
@@ -70,9 +84,22 @@ export const remove = mutation({
 
     const soul = await ctx.db.get(comment.soulId)
     if (soul) {
+      const now = Date.now()
+      const nextStats = { ...soul.stats, comments: Math.max(0, soul.stats.comments - 1) }
       await ctx.db.patch(soul._id, {
-        stats: { ...soul.stats, comments: Math.max(0, soul.stats.comments - 1) },
-        updatedAt: Date.now(),
+        stats: nextStats,
+        updatedAt: now,
+      })
+      await upsertResourceForSoul(ctx, soul, {
+        statsDownloads: nextStats.downloads,
+        statsStars: nextStats.stars,
+        stats: {
+          downloads: nextStats.downloads,
+          stars: nextStats.stars,
+          versions: nextStats.versions,
+          comments: nextStats.comments,
+        },
+        updatedAt: now,
       })
     }
 

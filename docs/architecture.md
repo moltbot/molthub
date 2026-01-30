@@ -12,7 +12,7 @@ read_when:
 - Web app: TanStack Start (React) under `src/`.
 - Backend: Convex under `convex/` (DB, storage, actions, HTTP routes).
 - CLI: `packages/clawdhub/` (published as `clawhub`, legacy `clawdhub`).
-- Shared schemas/routes: `packages/schema/` (`clawhub-schema`).
+- Shared schemas/routes: `packages/schema/` (`molthub-schema`).
 
 ## Data + storage
 

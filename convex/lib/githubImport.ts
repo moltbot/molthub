@@ -1,4 +1,4 @@
-import { TEXT_FILE_EXTENSION_SET } from 'clawhub-schema'
+import { TEXT_FILE_EXTENSION_SET } from 'molthub-schema'
 import { zipSync } from 'fflate'
 import semver from 'semver'
 import { parseFrontmatter } from './skills'

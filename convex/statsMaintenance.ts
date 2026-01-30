@@ -3,6 +3,7 @@ import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'
 import { internalAction, internalMutation, internalQuery } from './_generated/server'
+import { upsertResourceForSkill } from './lib/resource'
 
 const DEFAULT_BATCH_SIZE = 200
 const MAX_BATCH_SIZE = 1000
@@ -27,6 +28,13 @@ export const backfillSkillStatFieldsInternal = internalMutation({
       const next = buildSkillStatPatch(skill)
       if (!next) continue
       await ctx.db.patch(skill._id, next)
+      await upsertResourceForSkill(ctx, skill, {
+        stats: skill.stats,
+        statsDownloads: next.statsDownloads,
+        statsStars: next.statsStars,
+        statsInstallsCurrent: next.statsInstallsCurrent,
+        statsInstallsAllTime: next.statsInstallsAllTime,
+      })
       patched += 1
     }
 

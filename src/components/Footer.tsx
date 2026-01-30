@@ -1,27 +1,33 @@
+import { Separator } from './ui/separator'
 import { getSiteName } from '../lib/site'
 
 export function Footer() {
   const siteName = getSiteName()
   return (
-    <footer className="site-footer">
-      <div className="site-footer-inner">
-        <div className="site-footer-divider" aria-hidden="true" />
-        <div className="site-footer-row">
-          <div className="site-footer-copy">
+    <footer className="border-t border-border bg-background">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-muted-foreground sm:px-6 lg:px-8">
+        <Separator />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <span>
             {siteName} · A{' '}
-            <a href="https://clawd.bot" target="_blank" rel="noreferrer">
-              Clawdbot
+            <a href="https://molt.bot" target="_blank" rel="noreferrer" className="underline">
+              Moltbot
             </a>{' '}
             project ·{' '}
-            <a href="https://github.com/openclaw/clawhub" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/moltbot/molthub"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
               Open source (MIT)
             </a>{' '}
             ·{' '}
-            <a href="https://steipete.me" target="_blank" rel="noreferrer">
+            <a href="https://steipete.me" target="_blank" rel="noreferrer" className="underline">
               Peter Steinberger
             </a>
             .
-          </div>
+          </span>
         </div>
       </div>
     </footer>

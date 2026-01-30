@@ -2,17 +2,31 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAction, useQuery } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../convex/_generated/api'
-import { SoulCard } from '../../components/SoulCard'
+import { ResourceCard } from '../../components/ResourceCard'
+import { ResourceListRow } from '../../components/ResourceListRow'
+import { PageShell } from '../../components/PageShell'
+import { SectionHeader } from '../../components/SectionHeader'
+import { Badge } from '../../components/ui/badge'
+import { Button, buttonVariants } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import type { PublicSoul } from '../../lib/publicUser'
+import { getResourceLink } from '../../lib/resources'
 
-const sortKeys = ['newest', 'downloads', 'stars', 'name', 'updated'] as const
+const sortKeys = ['downloads', 'stars', 'newest', 'name', 'updated'] as const
 type SortKey = (typeof sortKeys)[number]
 type SortDir = 'asc' | 'desc'
 
 function parseSort(value: unknown): SortKey {
-  if (typeof value !== 'string') return 'newest'
+  if (typeof value !== 'string') return 'downloads'
   if ((sortKeys as readonly string[]).includes(value)) return value as SortKey
-  return 'newest'
+  return 'downloads'
 }
 
 function parseDir(value: unknown, sort: SortKey): SortDir {
@@ -36,9 +50,9 @@ export const Route = createFileRoute('/souls/')({
 function SoulsIndex() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  const sort = search.sort ?? 'newest'
+  const sort = search.sort ?? 'downloads'
   const dir = parseDir(search.dir, sort)
-  const view = search.view ?? 'list'
+  const view = search.view ?? 'cards'
   const [query, setQuery] = useState(search.q ?? '')
 
   const souls = useQuery(api.souls.list, { limit: 500 }) as PublicSoul[] | undefined
@@ -51,11 +65,9 @@ function SoulsIndex() {
     setQuery(search.q ?? '')
   }, [search.q])
 
-  // Auto-focus search input when focus=search param is present
   useEffect(() => {
     if (search.focus === 'search' && searchInputRef.current) {
       searchInputRef.current.focus()
-      // Clear the focus param from URL to avoid re-focusing on navigation
       void navigate({ search: (prev) => ({ ...prev, focus: undefined }), replace: true })
     }
   }, [search.focus, navigate])
@@ -83,7 +95,10 @@ function SoulsIndex() {
     results.sort((a, b) => {
       switch (sort) {
         case 'downloads':
-          return (a.stats.downloads - b.stats.downloads) * multiplier
+          return (
+            (a.stats.downloads - b.stats.downloads) * multiplier ||
+            (a.stats.stars - b.stats.stars) * multiplier
+          )
         case 'stars':
           return (a.stats.stars - b.stats.stars) * multiplier
         case 'updated':
@@ -104,23 +119,26 @@ function SoulsIndex() {
   const total = souls?.length
 
   return (
-    <main className="section">
-      <header className="skills-header">
-        <div>
-          <h1 className="section-title" style={{ marginBottom: 8 }}>
-            Souls
-          </h1>
-          <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            {isLoadingSouls
+    <main className="py-10">
+      <PageShell className="space-y-10">
+        <SectionHeader
+          title="Souls"
+          description={
+            isLoadingSouls
               ? 'Loading souls…'
-              : `${showing}${typeof total === 'number' ? ` of ${total}` : ''} souls.`}
-          </p>
-        </div>
-        <div className="skills-toolbar">
-          <div className="skills-search">
-            <input
+              : `${showing}${typeof total === 'number' ? ` of ${total}` : ''} souls.`
+          }
+          actions={
+            <Link to="/upload" search={{ updateSlug: undefined }} className={buttonVariants()}>
+              Upload a soul
+            </Link>
+          }
+        />
+
+        <div className="flex flex-col gap-4 rounded-[var(--radius)] border border-border bg-card p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
+            <Input
               ref={searchInputRef}
-              className="skills-search-input"
               value={query}
               onChange={(event) => {
                 const next = event.target.value
@@ -134,33 +152,35 @@ function SoulsIndex() {
               placeholder="Filter by name, slug, or summary…"
             />
           </div>
-          <div className="skills-toolbar-row">
-            <select
-              className="skills-sort"
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
               value={sort}
-              onChange={(event) => {
-                const sort = parseSort(event.target.value)
+              onValueChange={(value) => {
+                const nextSort = parseSort(value)
                 void navigate({
                   search: (prev) => ({
                     ...prev,
-                    sort,
-                    dir: parseDir(prev.dir, sort),
+                    sort: nextSort,
+                    dir: parseDir(prev.dir, nextSort),
                   }),
                   replace: true,
                 })
               }}
-              aria-label="Sort souls"
             >
-              <option value="newest">Newest</option>
-              <option value="updated">Recently updated</option>
-              <option value="downloads">Downloads</option>
-              <option value="stars">Stars</option>
-              <option value="name">Name</option>
-            </select>
-            <button
-              className="skills-dir"
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="downloads">Downloads</SelectItem>
+                <SelectItem value="stars">Stars</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="updated">Recently updated</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
               type="button"
-              aria-label={`Sort direction ${dir}`}
+              variant="outline"
               onClick={() => {
                 void navigate({
                   search: (prev) => ({
@@ -172,72 +192,70 @@ function SoulsIndex() {
               }}
             >
               {dir === 'asc' ? '↑' : '↓'}
-            </button>
-            <button
-              className={`skills-view${view === 'cards' ? ' is-active' : ''}`}
+            </Button>
+            <Button
               type="button"
+              variant={view === 'cards' ? 'default' : 'outline'}
               onClick={() => {
                 void navigate({
                   search: (prev) => ({
                     ...prev,
-                    view: prev.view === 'cards' ? undefined : 'cards',
+                    view: prev.view === 'cards' ? 'list' : 'cards',
                   }),
                   replace: true,
                 })
               }}
             >
-              {view === 'cards' ? 'List' : 'Cards'}
-            </button>
+              {view === 'cards' ? 'Cards' : 'List'}
+            </Button>
           </div>
         </div>
-      </header>
 
-      {isLoadingSouls ? (
-        <div className="card">
-          <div className="loading-indicator">Loading souls…</div>
-        </div>
-      ) : showing === 0 ? (
-        <div className="card">No souls match that filter.</div>
-      ) : view === 'cards' ? (
-        <div className="grid">
-          {sorted.map((soul) => (
-            <SoulCard
-              key={soul._id}
-              soul={soul}
-              summaryFallback="A SOUL.md bundle."
-              meta={
-                <div className="stat">
-                  ⭐ {soul.stats.stars} · ⤓ {soul.stats.downloads} · {soul.stats.versions} v
-                </div>
-              }
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="skills-list">
-          {sorted.map((soul) => (
-            <Link
-              key={soul._id}
-              className="skills-row"
-              to="/souls/$slug"
-              params={{ slug: soul.slug }}
-            >
-              <div className="skills-row-main">
-                <div className="skills-row-title">
-                  <span>{soul.displayName}</span>
-                  <span className="skills-row-slug">/{soul.slug}</span>
-                </div>
-                <div className="skills-row-summary">{soul.summary ?? 'SOUL.md bundle.'}</div>
-              </div>
-              <div className="skills-row-metrics">
-                <span>⤓ {soul.stats.downloads}</span>
-                <span>★ {soul.stats.stars}</span>
-                <span>{soul.stats.versions} v</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+        {isLoadingSouls ? (
+          <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading souls…
+          </div>
+        ) : showing === 0 ? (
+          <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            No souls match that filter.
+          </div>
+        ) : view === 'cards' ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {sorted.map((soul) => (
+              <ResourceCard
+                key={soul._id}
+                type="soul"
+                resource={soul}
+                summaryFallback="A SOUL.md bundle."
+                meta={
+                  <span>
+                    ⭐ {soul.stats.stars} stars · ⤓ {soul.stats.downloads} downloads · {soul.stats.versions} versions
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {sorted.map((soul) => (
+              <ResourceListRow
+                key={soul._id}
+                type="soul"
+                resource={soul}
+                summaryFallback="SOUL.md bundle."
+                meta={
+                  <span className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">⤓ {soul.stats.downloads} downloads</Badge>
+                    <Badge variant="secondary">★ {soul.stats.stars} stars</Badge>
+                    <Badge variant="secondary">{soul.stats.versions} versions</Badge>
+                  </span>
+                }
+                href={getResourceLink('soul', soul, soul.slug, null)}
+              />
+            ))}
+          </div>
+        )}
+      </PageShell>
     </main>
   )
 }

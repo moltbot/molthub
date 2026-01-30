@@ -1,29 +1,35 @@
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
-type BadgeKind = Doc<'skillBadges'>['kind']
+type BadgeKind = Doc<'resourceBadges'>['kind']
 
-type SkillBadgeMap = Partial<Record<BadgeKind, { byUserId: Id<'users'>; at: number }>>
+export type ResourceBadgeMap = Partial<Record<BadgeKind, { byUserId: Id<'users'>; at: number }>>
 
-type SkillLike = { badges?: SkillBadgeMap | null }
+type ResourceLike = { badges?: ResourceBadgeMap | null }
 
 type BadgeLabel = 'Deprecated' | 'Official' | 'Highlighted'
 
-export function isSkillHighlighted(skill: SkillLike) {
-  return Boolean(skill.badges?.highlighted)
+export function isResourceHighlighted(resource: ResourceLike) {
+  return Boolean(resource.badges?.highlighted)
 }
 
-export function isSkillOfficial(skill: SkillLike) {
-  return Boolean(skill.badges?.official)
+export function isResourceOfficial(resource: ResourceLike) {
+  return Boolean(resource.badges?.official)
 }
 
-export function isSkillDeprecated(skill: SkillLike) {
-  return Boolean(skill.badges?.deprecated)
+export function isResourceDeprecated(resource: ResourceLike) {
+  return Boolean(resource.badges?.deprecated)
 }
 
-export function getSkillBadges(skill: SkillLike): BadgeLabel[] {
+export function getResourceBadges(resource: ResourceLike): BadgeLabel[] {
   const badges: BadgeLabel[] = []
-  if (isSkillDeprecated(skill)) badges.push('Deprecated')
-  if (isSkillOfficial(skill)) badges.push('Official')
-  if (isSkillHighlighted(skill)) badges.push('Highlighted')
+  if (isResourceDeprecated(resource)) badges.push('Deprecated')
+  if (isResourceOfficial(resource)) badges.push('Official')
+  if (isResourceHighlighted(resource)) badges.push('Highlighted')
   return badges
 }
+
+export const isSkillHighlighted = isResourceHighlighted
+export const isSkillOfficial = isResourceOfficial
+export const isSkillDeprecated = isResourceDeprecated
+export const getSkillBadges = getResourceBadges
+export type SkillBadgeMap = ResourceBadgeMap

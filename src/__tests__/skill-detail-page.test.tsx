@@ -78,7 +78,7 @@ describe('SkillDetailPage', () => {
       expect(navigateMock).toHaveBeenCalled()
     })
     expect(navigateMock).toHaveBeenCalledWith({
-      to: '/$owner/$slug',
+      to: '/skills/$owner/$slug',
       params: { owner: 'steipete', slug: 'weather' },
       replace: true,
     })

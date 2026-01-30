@@ -1,7 +1,8 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { ActionCtx } from './_generated/server'
-import { internalAction, internalMutation } from './_generated/server'
+import { action, internalAction, internalMutation } from './_generated/server'
+import { assertAdmin, requireUserFromAction } from './lib/access'
 import { EMBEDDING_DIMENSIONS } from './lib/embeddings'
 import { parseClawdisMetadata, parseFrontmatter } from './lib/skills'
 
@@ -287,6 +288,21 @@ export const seedNixSkills: ReturnType<typeof internalAction> = internalAction({
   handler: seedNixSkillsHandler,
 })
 
+const AUTH_BYPASS = process.env.AUTH_BYPASS === 'true'
+
+export const seedNixSkillsPublic = action({
+  args: {
+    reset: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    if (!AUTH_BYPASS) {
+      const { user } = await requireUserFromAction(ctx)
+      assertAdmin(user)
+    }
+    return seedNixSkillsHandler(ctx, args)
+  },
+})
+
 async function seedPadelSkillHandler(
   ctx: ActionCtx,
   args: SeedActionArgs,
@@ -377,7 +393,31 @@ export const seedSkillMutation = internalMutation({
         updatedAt: now,
       }))
 
+    const resourceId = await ctx.db.insert('resources', {
+      type: 'skill',
+      slug: args.slug,
+      displayName: args.displayName,
+      summary: args.summary,
+      ownerUserId: userId,
+      ownerHandle: 'local',
+      softDeletedAt: undefined,
+      statsDownloads: 0,
+      statsStars: 0,
+      statsInstallsCurrent: 0,
+      statsInstallsAllTime: 0,
+      stats: {
+        downloads: 0,
+        installsCurrent: 0,
+        installsAllTime: 0,
+        stars: 0,
+        versions: 0,
+        comments: 0,
+      },
+      createdAt: now,
+      updatedAt: now,
+    })
     const skillId = await ctx.db.insert('skills', {
+      resourceId,
       slug: args.slug,
       displayName: args.displayName,
       summary: args.summary,
@@ -385,7 +425,6 @@ export const seedSkillMutation = internalMutation({
       latestVersionId: undefined,
       tags: {},
       softDeletedAt: undefined,
-      badges: { redactionApproved: undefined },
       statsDownloads: 0,
       statsStars: 0,
       statsInstallsCurrent: 0,

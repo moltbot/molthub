@@ -2,7 +2,8 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { action, internalQuery } from './_generated/server'
-import { getSkillBadgeMaps, isSkillHighlighted, type SkillBadgeMap } from './lib/badges'
+import { getResourceBadgeMaps, isResourceHighlighted, type ResourceBadgeMap } from './lib/badges'
+import { isSkillPublic } from './lib/moderation'
 import { generateEmbedding } from './lib/embeddings'
 import { toPublicSkill, toPublicSoul } from './lib/public'
 import { matchesExactTokens, tokenize } from './lib/searchText'
@@ -12,6 +13,7 @@ type HydratedEntry = {
   skill: NonNullable<ReturnType<typeof toPublicSkill>>
   version: Doc<'skillVersions'> | null
   ownerHandle: string | null
+  resourceId: Id<'resources'> | null
 }
 
 type SearchResult = HydratedEntry & { score: number }
@@ -62,20 +64,23 @@ export const searchSkills: ReturnType<typeof action> = action({
         results.map((result) => [result._id, result._score]),
       )
 
-      const badgeMapEntries = (await ctx.runQuery(internal.search.getSkillBadgeMapsInternal, {
-        skillIds: hydrated.map((entry) => entry.skill._id),
-      })) as Array<[Id<'skills'>, SkillBadgeMap]>
-      const badgeMapBySkillId = new Map(badgeMapEntries)
+      const resourceIds = hydrated
+        .map((entry) => entry.resourceId)
+        .filter((resourceId): resourceId is Id<'resources'> => Boolean(resourceId))
+      const badgeMapEntries = (await ctx.runQuery(internal.search.getResourceBadgeMapsInternal, {
+        resourceIds,
+      })) as Array<[Id<'resources'>, ResourceBadgeMap]>
+      const badgeMapByResourceId = new Map(badgeMapEntries)
       const hydratedWithBadges = hydrated.map((entry) => ({
         ...entry,
         skill: {
           ...entry.skill,
-          badges: badgeMapBySkillId.get(entry.skill._id) ?? {},
+          badges: entry.resourceId ? badgeMapByResourceId.get(entry.resourceId) ?? {} : {},
         },
       }))
 
       const filtered = args.highlightedOnly
-        ? hydratedWithBadges.filter((entry) => isSkillHighlighted(entry.skill))
+        ? hydratedWithBadges.filter((entry) => isResourceHighlighted(entry.skill))
         : hydratedWithBadges
 
       exactMatches = filtered.filter((entry) =>
@@ -105,10 +110,10 @@ export const searchSkills: ReturnType<typeof action> = action({
   },
 })
 
-export const getBadgeMapsForSkills = internalQuery({
-  args: { skillIds: v.array(v.id('skills')) },
-  handler: async (ctx, args): Promise<Array<[Id<'skills'>, SkillBadgeMap]>> => {
-    const badgeMap = await getSkillBadgeMaps(ctx, args.skillIds)
+export const getBadgeMapsForResources = internalQuery({
+  args: { resourceIds: v.array(v.id('resources')) },
+  handler: async (ctx, args): Promise<Array<[Id<'resources'>, ResourceBadgeMap]>> => {
+    const badgeMap = await getResourceBadgeMaps(ctx, args.resourceIds)
     return Array.from(badgeMap.entries())
   },
 })
@@ -134,13 +139,38 @@ export const hydrateResults = internalQuery({
         if (!embedding) return null
         const skill = await ctx.db.get(embedding.skillId)
         if (!skill || skill.softDeletedAt) return null
-        const [version, ownerHandle] = await Promise.all([
+        if (!isSkillPublic(skill)) return null
+        const [version, resource] = await Promise.all([
           ctx.db.get(embedding.versionId),
-          getOwnerHandle(skill.ownerUserId),
+          skill.resourceId ? ctx.db.get(skill.resourceId) : null,
         ])
-        const publicSkill = toPublicSkill(skill)
+        const ownerHandle = resource?.ownerHandle ?? (await getOwnerHandle(skill.ownerUserId))
+        const mergedSkill = resource
+          ? {
+              ...skill,
+              slug: resource.slug,
+              displayName: resource.displayName,
+              summary: resource.summary,
+              ownerUserId: resource.ownerUserId,
+              softDeletedAt: resource.softDeletedAt,
+              statsDownloads: resource.statsDownloads,
+              statsStars: resource.statsStars,
+              statsInstallsCurrent: resource.statsInstallsCurrent,
+              statsInstallsAllTime: resource.statsInstallsAllTime,
+              stats: resource.stats,
+              createdAt: resource.createdAt,
+              updatedAt: resource.updatedAt,
+            }
+          : skill
+        const publicSkill = toPublicSkill(mergedSkill)
         if (!publicSkill) return null
-        return { embeddingId, skill: publicSkill, version, ownerHandle }
+        return {
+          embeddingId,
+          skill: publicSkill,
+          version,
+          ownerHandle,
+          resourceId: skill.resourceId ?? null,
+        }
       }),
     )
 
@@ -243,10 +273,10 @@ export const hydrateSoulResults = internalQuery({
   },
 })
 
-export const getSkillBadgeMapsInternal = internalQuery({
-  args: { skillIds: v.array(v.id('skills')) },
+export const getResourceBadgeMapsInternal = internalQuery({
+  args: { resourceIds: v.array(v.id('resources')) },
   handler: async (ctx, args) => {
-    const badgeMap = await getSkillBadgeMaps(ctx, args.skillIds)
+    const badgeMap = await getResourceBadgeMaps(ctx, args.resourceIds)
     return Array.from(badgeMap.entries())
   },
 })

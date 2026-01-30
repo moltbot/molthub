@@ -22,6 +22,7 @@
 - Indentation: 2 spaces, single quotes (Biome).
 - Lint/format: Biome + oxlint (type-aware).
 - Convex function names: verb-first (`getBySlug`, `publishVersion`).
+- Prefer shared resource components/utilities for skills/souls/extensions to avoid duplicated logic.
 
 ## Testing Guidelines
 - Framework: Vitest 4 + jsdom.
@@ -43,3 +44,12 @@
 - New Convex functions must be pushed before `convex run`: use `bunx convex dev --once` (dev) or `bunx convex deploy` (prod).
 - For non-interactive prod deploys, use `bunx convex deploy -y` to skip confirmation.
 - If `bunx convex run --env-file .env.local ...` returns `401 MissingAccessToken` despite `bunx convex login`, workaround: omit `--env-file` and use `--deployment-name <name>` / `--prod`.
+
+## Rewrite Notes (Resources, Moderation, Auth)
+- Resources are unified in the `resources` table with `type` (`skill`, `soul`, `extension`); type tables keep version-specific fields.
+- Shared UI pieces live in `src/components/ResourceCard.tsx`, `ResourceListRow.tsx`, and `ResourceDetailShell.tsx`.
+- Moderation uses a reported-only queue + lookup tools; duplicate system removed. Similar-skill lookup uses `skills.findSimilarSkills` (vector search action).
+- GitHub backups delete skill folders on hide/delete via `githubBackupsNode.deleteSkillBackupInternal`.
+- Local auth bypass: set `AUTH_BYPASS=true` in Convex env + `VITE_AUTH_BYPASS=true` in `.env.local`.
+- Local seed script: `bun run seed:local` (calls `devSeed:seedNixSkillsPublic`).
+- Card stats labels: stars, downloads, installs (skills only), versions.

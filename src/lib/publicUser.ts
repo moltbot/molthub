@@ -1,4 +1,5 @@
 import type { Doc } from '../../convex/_generated/dataModel'
+import type { ResourceBadgeMap } from './badges'
 
 export type PublicUser = Pick<
   Doc<'users'>,
@@ -13,15 +14,15 @@ export type PublicSkill = Pick<
   | 'displayName'
   | 'summary'
   | 'ownerUserId'
-  | 'canonicalSkillId'
   | 'forkOf'
   | 'latestVersionId'
   | 'tags'
-  | 'badges'
   | 'stats'
   | 'createdAt'
   | 'updatedAt'
->
+> & {
+  badges?: ResourceBadgeMap
+}
 
 export type PublicSoul = Pick<
   Doc<'souls'>,
@@ -36,4 +37,23 @@ export type PublicSoul = Pick<
   | 'stats'
   | 'createdAt'
   | 'updatedAt'
->
+> & {
+  badges?: ResourceBadgeMap
+}
+
+export type PublicResource = Pick<
+  Doc<'resources'>,
+  | '_id'
+  | '_creationTime'
+  | 'type'
+  | 'slug'
+  | 'displayName'
+  | 'summary'
+  | 'ownerUserId'
+  | 'ownerHandle'
+  | 'stats'
+  | 'createdAt'
+  | 'updatedAt'
+> & {
+  badges?: ResourceBadgeMap
+}

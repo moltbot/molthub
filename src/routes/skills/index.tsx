@@ -4,19 +4,33 @@ import { usePaginatedQuery } from 'convex-helpers/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../convex/_generated/api'
 import type { Doc } from '../../../convex/_generated/dataModel'
-import { SkillCard } from '../../components/SkillCard'
+import { ResourceCard } from '../../components/ResourceCard'
+import { ResourceListRow } from '../../components/ResourceListRow'
+import { PageShell } from '../../components/PageShell'
+import { SectionHeader } from '../../components/SectionHeader'
+import { Badge } from '../../components/ui/badge'
+import { Button, buttonVariants } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import { getSkillBadges, isSkillHighlighted } from '../../lib/badges'
 import type { PublicSkill } from '../../lib/publicUser'
+import { getResourceLink } from '../../lib/resources'
 
-const sortKeys = ['newest', 'downloads', 'installs', 'stars', 'name', 'updated'] as const
+const sortKeys = ['downloads', 'stars', 'newest', 'installs', 'name', 'updated'] as const
 const pageSize = 25
 type SortKey = (typeof sortKeys)[number]
 type SortDir = 'asc' | 'desc'
 
 function parseSort(value: unknown): SortKey {
-  if (typeof value !== 'string') return 'newest'
+  if (typeof value !== 'string') return 'downloads'
   if ((sortKeys as readonly string[]).includes(value)) return value as SortKey
-  return 'newest'
+  return 'downloads'
 }
 
 function parseDir(value: unknown, sort: SortKey): SortDir {
@@ -35,11 +49,6 @@ type SkillSearchEntry = {
   version: Doc<'skillVersions'> | null
   score: number
   ownerHandle?: string | null
-}
-
-function buildSkillHref(skill: PublicSkill, ownerHandle?: string | null) {
-  const owner = ownerHandle?.trim() || String(skill.ownerUserId)
-  return `/${encodeURIComponent(owner)}/${encodeURIComponent(skill.slug)}`
 }
 
 export const Route = createFileRoute('/skills/')({
@@ -62,9 +71,9 @@ export const Route = createFileRoute('/skills/')({
 export function SkillsIndex() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  const sort = search.sort ?? 'newest'
+  const sort = search.sort ?? 'downloads'
   const dir = parseDir(search.dir, sort)
-  const view = search.view ?? 'list'
+  const view = search.view ?? 'cards'
   const highlightedOnly = search.highlighted ?? false
   const [query, setQuery] = useState(search.q ?? '')
   const searchSkills = useAction(api.search.searchSkills)
@@ -79,7 +88,6 @@ export function SkillsIndex() {
   const hasQuery = trimmedQuery.length > 0
   const searchKey = trimmedQuery ? `${trimmedQuery}::${highlightedOnly ? '1' : '0'}` : ''
 
-  // Use convex-helpers usePaginatedQuery for better cache behavior
   const {
     results: paginatedResults,
     status: paginationStatus,
@@ -88,8 +96,6 @@ export function SkillsIndex() {
     initialNumItems: pageSize,
   })
 
-  // Derive loading states from pagination status
-  // status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted'
   const isLoadingList = paginationStatus === 'LoadingFirstPage'
   const canLoadMoreList = paginationStatus === 'CanLoadMore'
   const isLoadingMoreList = paginationStatus === 'LoadingMore'
@@ -98,11 +104,9 @@ export function SkillsIndex() {
     setQuery(search.q ?? '')
   }, [search.q])
 
-  // Auto-focus search input when focus=search param is present
   useEffect(() => {
     if (search.focus === 'search' && searchInputRef.current) {
       searchInputRef.current.focus()
-      // Clear the focus param from URL to avoid re-focusing on navigation
       void navigate({ search: (prev) => ({ ...prev, focus: undefined }), replace: true })
     }
   }, [search.focus, navigate])
@@ -151,7 +155,6 @@ export function SkillsIndex() {
         ownerHandle: entry.ownerHandle ?? null,
       }))
     }
-    // paginatedResults is an array of page items from usePaginatedQuery
     return paginatedResults as Array<SkillListEntry>
   }, [hasQuery, paginatedResults, searchResults])
 
@@ -166,7 +169,10 @@ export function SkillsIndex() {
     results.sort((a, b) => {
       switch (sort) {
         case 'downloads':
-          return (a.skill.stats.downloads - b.skill.stats.downloads) * multiplier
+          return (
+            (a.skill.stats.downloads - b.skill.stats.downloads) * multiplier ||
+            (a.skill.stats.stars - b.skill.stats.stars) * multiplier
+          )
         case 'installs':
           return (
             ((a.skill.stats.installsAllTime ?? 0) - (b.skill.stats.installsAllTime ?? 0)) *
@@ -221,23 +227,26 @@ export function SkillsIndex() {
   }, [canLoadMore, loadMore])
 
   return (
-    <main className="section">
-      <header className="skills-header">
-        <div>
-          <h1 className="section-title" style={{ marginBottom: 8 }}>
-            Skills
-          </h1>
-          <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            {isLoadingSkills
+    <main className="py-10">
+      <PageShell className="space-y-10">
+        <SectionHeader
+          title="Skills"
+          description={
+            isLoadingSkills
               ? 'Loading skills…'
-              : `Browse the skill library${highlightedOnly ? ' (highlighted)' : ''}.`}
-          </p>
-        </div>
-        <div className="skills-toolbar">
-          <div className="skills-search">
-            <input
+              : `Browse the skill library${highlightedOnly ? ' (highlighted)' : ''}.`
+          }
+          actions={
+            <Link to="/upload" search={{ updateSlug: undefined }} className={buttonVariants()}>
+              Upload a skill
+            </Link>
+          }
+        />
+
+        <div className="flex flex-col gap-4 rounded-[var(--radius)] border border-border bg-card p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
+            <Input
               ref={searchInputRef}
-              className="skills-search-input"
               value={query}
               onChange={(event) => {
                 const next = event.target.value
@@ -251,10 +260,10 @@ export function SkillsIndex() {
               placeholder="Filter by name, slug, or summary…"
             />
           </div>
-          <div className="skills-toolbar-row">
-            <button
-              className={`search-filter-button${highlightedOnly ? ' is-active' : ''}`}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
               type="button"
+              variant={highlightedOnly ? 'default' : 'outline'}
               aria-pressed={highlightedOnly}
               onClick={() => {
                 void navigate({
@@ -267,34 +276,36 @@ export function SkillsIndex() {
               }}
             >
               Highlighted
-            </button>
-            <select
-              className="skills-sort"
+            </Button>
+            <Select
               value={sort}
-              onChange={(event) => {
-                const sort = parseSort(event.target.value)
+              onValueChange={(value) => {
+                const nextSort = parseSort(value)
                 void navigate({
                   search: (prev) => ({
                     ...prev,
-                    sort,
-                    dir: parseDir(prev.dir, sort),
+                    sort: nextSort,
+                    dir: parseDir(prev.dir, nextSort),
                   }),
                   replace: true,
                 })
               }}
-              aria-label="Sort skills"
             >
-              <option value="newest">Newest</option>
-              <option value="updated">Recently updated</option>
-              <option value="downloads">Downloads</option>
-              <option value="installs">Installs</option>
-              <option value="stars">Stars</option>
-              <option value="name">Name</option>
-            </select>
-            <button
-              className="skills-dir"
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="downloads">Downloads</SelectItem>
+                <SelectItem value="stars">Stars</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="updated">Recently updated</SelectItem>
+                <SelectItem value="installs">Installs</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
               type="button"
-              aria-label={`Sort direction ${dir}`}
+              variant="outline"
               onClick={() => {
                 void navigate({
                   search: (prev) => ({
@@ -306,117 +317,111 @@ export function SkillsIndex() {
               }}
             >
               {dir === 'asc' ? '↑' : '↓'}
-            </button>
-            <button
-              className={`skills-view${view === 'cards' ? ' is-active' : ''}`}
+            </Button>
+            <Button
               type="button"
+              variant={view === 'cards' ? 'default' : 'outline'}
               onClick={() => {
                 void navigate({
                   search: (prev) => ({
                     ...prev,
-                    view: prev.view === 'cards' ? undefined : 'cards',
+                    view: prev.view === 'cards' ? 'list' : 'cards',
                   }),
                   replace: true,
                 })
               }}
             >
-              {view === 'cards' ? 'List' : 'Cards'}
-            </button>
+              {view === 'cards' ? 'Cards' : 'List'}
+            </Button>
           </div>
         </div>
-      </header>
 
-      {isLoadingSkills ? (
-        <div className="card">
-          <div className="loading-indicator">Loading skills…</div>
-        </div>
-      ) : sorted.length === 0 ? (
-        <div className="card">No skills match that filter.</div>
-      ) : view === 'cards' ? (
-        <div className="grid">
-          {sorted.map((entry) => {
-            const skill = entry.skill
-            const isPlugin = Boolean(entry.latestVersion?.parsed?.clawdis?.nix?.plugin)
-            const skillHref = buildSkillHref(skill, entry.ownerHandle)
-            return (
-              <SkillCard
-                key={skill._id}
-                skill={skill}
-                href={skillHref}
-                badge={getSkillBadges(skill)}
-                chip={isPlugin ? 'Plugin bundle (nix)' : undefined}
-                summaryFallback="Agent-ready skill pack."
-                meta={
-                  <div className="stat">
-                    ⭐ {skill.stats.stars} · ⤓ {skill.stats.downloads} · ⤒{' '}
-                    {skill.stats.installsAllTime ?? 0}
-                  </div>
-                }
-              />
-            )
-          })}
-        </div>
-      ) : (
-        <div className="skills-list">
-          {sorted.map((entry) => {
-            const skill = entry.skill
-            const isPlugin = Boolean(entry.latestVersion?.parsed?.clawdis?.nix?.plugin)
-            const skillHref = buildSkillHref(skill, entry.ownerHandle)
-            return (
-              <Link key={skill._id} className="skills-row" to={skillHref}>
-                <div className="skills-row-main">
-                  <div className="skills-row-title">
-                    <span>{skill.displayName}</span>
-                    <span className="skills-row-slug">/{skill.slug}</span>
-                    {getSkillBadges(skill).map((badge) => (
-                      <span key={badge} className="tag">
-                        {badge}
-                      </span>
-                    ))}
-                    {isPlugin ? (
-                      <span className="tag tag-accent tag-compact">Plugin bundle (nix)</span>
-                    ) : null}
-                  </div>
-                  <div className="skills-row-summary">
-                    {skill.summary ?? 'No summary provided.'}
-                  </div>
-                  {isPlugin ? (
-                    <div className="skills-row-meta">
-                      Bundle includes SKILL.md, CLI, and config.
-                    </div>
-                  ) : null}
-                </div>
-                <div className="skills-row-metrics">
-                  <span>⤓ {skill.stats.downloads}</span>
-                  <span>⤒ {skill.stats.installsAllTime ?? 0}</span>
-                  <span>★ {skill.stats.stars}</span>
-                  <span>{skill.stats.versions} v</span>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
+        {isLoadingSkills ? (
+          <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading skills…
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="rounded-[var(--radius)] border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            No skills match that filter.
+          </div>
+        ) : view === 'cards' ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {sorted.map((entry) => {
+              const skill = entry.skill
+              const isPlugin = Boolean(entry.latestVersion?.parsed?.moltbot?.nix?.plugin)
+              const skillHref = getResourceLink(
+                'skill',
+                skill,
+                skill.slug,
+                entry.ownerHandle ?? null,
+              )
+              return (
+                <ResourceCard
+                  key={skill._id}
+                  type="skill"
+                  resource={skill}
+                  ownerHandle={entry.ownerHandle ?? null}
+                  href={skillHref}
+                  badges={getSkillBadges(skill)}
+                  chip={isPlugin ? 'Plugin bundle (nix)' : undefined}
+                  summaryFallback="Agent-ready skill pack."
+                  meta={
+                    <span>
+                      ⭐ {skill.stats.stars} stars · ⤓ {skill.stats.downloads} downloads · ⤒{' '}
+                      {skill.stats.installsAllTime ?? 0} installs
+                    </span>
+                  }
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {sorted.map((entry) => {
+              const skill = entry.skill
+              const isPlugin = Boolean(entry.latestVersion?.parsed?.moltbot?.nix?.plugin)
+              return (
+                <ResourceListRow
+                  key={skill._id}
+                  type="skill"
+                  resource={skill}
+                  ownerHandle={entry.ownerHandle ?? null}
+                  badges={getSkillBadges(skill)}
+                  chip={isPlugin ? 'Plugin bundle (nix)' : undefined}
+                  summaryFallback="No summary provided."
+                  meta={
+                    <span className="flex flex-wrap gap-2">
+                      <Badge variant="secondary">⤓ {skill.stats.downloads} downloads</Badge>
+                      <Badge variant="secondary">⤒ {skill.stats.installsAllTime ?? 0} installs</Badge>
+                      <Badge variant="secondary">★ {skill.stats.stars} stars</Badge>
+                      <Badge variant="secondary">{skill.stats.versions} versions</Badge>
+                    </span>
+                  }
+                />
+              )
+            })}
+          </div>
+        )}
 
-      {canLoadMore ? (
-        <div
-          ref={canAutoLoad ? loadMoreRef : null}
-          className="card"
-          style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}
-        >
-          {canAutoLoad ? (
-            isLoadingMore ? (
-              'Loading more…'
+        {canLoadMore ? (
+          <div
+            ref={canAutoLoad ? loadMoreRef : null}
+            className="rounded-[var(--radius)] border border-dashed border-border bg-card p-4 text-center text-sm text-muted-foreground"
+          >
+            {canAutoLoad ? (
+              isLoadingMore ? (
+                'Loading more…'
+              ) : (
+                'Scroll to load more'
+              )
             ) : (
-              'Scroll to load more'
-            )
-          ) : (
-            <button className="btn" type="button" onClick={loadMore} disabled={isLoadingMore}>
-              {isLoadingMore ? 'Loading…' : 'Load more'}
-            </button>
-          )}
-        </div>
-      ) : null}
+              <Button type="button" variant="outline" onClick={loadMore} disabled={isLoadingMore}>
+                {isLoadingMore ? 'Loading…' : 'Load more'}
+              </Button>
+            )}
+          </div>
+        ) : null}
+      </PageShell>
     </main>
   )
 }

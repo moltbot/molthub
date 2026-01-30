@@ -14,9 +14,9 @@ describe('og helpers', () => {
       summary: 'Forecasts for your area.',
       version: '1.2.3',
     })
-    expect(meta.title).toBe('Weather — OpenClaw')
+    expect(meta.title).toBe('Weather — MoltHub')
     expect(meta.description).toBe('Forecasts for your area.')
-    expect(meta.url).toContain('/steipete/weather')
+    expect(meta.url).toContain('/skills/steipete/weather')
     expect(meta.owner).toBe('steipete')
     expect(meta.image).toContain('/og/skill.png?')
     expect(meta.image).toContain('v=5')
@@ -37,7 +37,7 @@ describe('og helpers', () => {
     })
     expect(meta.title).toBe('North Star — SoulHub')
     expect(meta.description).toBe('Personal north star notes.')
-    expect(meta.url).toContain('/souls/north-star')
+    expect(meta.url).toContain('/souls/someone/north-star')
     expect(meta.owner).toBe('someone')
     expect(meta.image).toContain('/og/soul.png?')
     expect(meta.image).toContain('v=1')
@@ -48,9 +48,9 @@ describe('og helpers', () => {
 
   it('uses defaults when owner and summary are missing', () => {
     const meta = buildSkillMeta({ slug: 'parser' })
-    expect(meta.title).toBe('parser — OpenClaw')
-    expect(meta.description).toMatch(/OpenClaw — a fast skill registry/i)
-    expect(meta.url).toContain('/unknown/parser')
+    expect(meta.title).toBe('parser — MoltHub')
+    expect(meta.description).toMatch(/MoltHub — a fast skill registry/i)
+    expect(meta.url).toContain('/skills/unknown/parser')
     expect(meta.owner).toBeNull()
     expect(meta.image).toContain('slug=parser')
   })
@@ -59,7 +59,7 @@ describe('og helpers', () => {
     const meta = buildSoulMeta({ slug: 'signal' })
     expect(meta.title).toBe('signal — SoulHub')
     expect(meta.description).toMatch(/SoulHub — the home for SOUL.md/i)
-    expect(meta.url).toContain('/souls/signal')
+    expect(meta.url).toContain('/souls/unknown/signal')
     expect(meta.owner).toBeNull()
     expect(meta.image).toContain('slug=signal')
   })
@@ -97,7 +97,7 @@ describe('og helpers', () => {
       ok: true,
       json: async () => ({
         soul: { displayName: 'North Star', summary: 'Signal' },
-        owner: { handle: 'steipete' },
+        owner: { handle: 'steipete', userId: 'users:2' },
         latestVersion: { version: '0.1.0' },
       }),
     }))
@@ -108,6 +108,7 @@ describe('og helpers', () => {
       displayName: 'North Star',
       summary: 'Signal',
       owner: 'steipete',
+      ownerId: 'users:2',
       version: '0.1.0',
     })
   })

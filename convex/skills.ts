@@ -1,4 +1,5 @@
 import { paginationOptsValidator } from 'convex/server'
+import { getAuthUserId } from '@convex-dev/auth/server'
 import { ConvexError, v } from 'convex/values'
 import { paginator } from 'convex-helpers/server/pagination'
 import { internal } from './_generated/api'
@@ -6,11 +7,12 @@ import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { assertAdmin, assertModerator, requireUser, requireUserFromAction } from './lib/access'
-import { getSkillBadgeMap, getSkillBadgeMaps, isSkillHighlighted } from './lib/badges'
+import { getResourceBadgeMap, getResourceBadgeMaps, isResourceHighlighted } from './lib/badges'
 import { generateChangelogPreview as buildChangelogPreview } from './lib/changelog'
 import { buildTrendingLeaderboard } from './lib/leaderboards'
-import { deriveModerationFlags } from './lib/moderation'
+import { deriveModerationFlags, isSkillPublic } from './lib/moderation'
 import { toPublicSkill, toPublicUser } from './lib/public'
+import { upsertResourceForSkill } from './lib/resource'
 import {
   fetchText,
   type PublishResult,
@@ -30,10 +32,75 @@ const MAX_LIST_LIMIT = 50
 const MAX_PUBLIC_LIST_LIMIT = 200
 const MAX_LIST_BULK_LIMIT = 200
 const MAX_LIST_TAKE = 1000
+const AUTH_BYPASS = process.env.AUTH_BYPASS === 'true'
 
 async function resolveOwnerHandle(ctx: QueryCtx, ownerUserId: Id<'users'>) {
   const owner = await ctx.db.get(ownerUserId)
   return owner?.handle ?? owner?._id ?? null
+}
+
+async function resolveSkillResourceId(ctx: MutationCtx, skill: Doc<'skills'>) {
+  if (skill.resourceId) return skill.resourceId
+  return upsertResourceForSkill(ctx, skill)
+}
+
+type BadgeContext = Pick<QueryCtx, 'db'>
+
+async function getBadgesForSkill(ctx: BadgeContext, skill: Doc<'skills'>) {
+  if (!skill.resourceId) return {}
+  return getResourceBadgeMap(ctx, skill.resourceId)
+}
+
+async function getBadgeMapBySkillId(ctx: BadgeContext, skills: Doc<'skills'>[]) {
+  const resourceIds = skills
+    .map((skill) => skill.resourceId)
+    .filter((resourceId): resourceId is Id<'resources'> => Boolean(resourceId))
+  const badgeMapByResourceId = await getResourceBadgeMaps(ctx, resourceIds)
+  return new Map(
+    skills.map((skill) => [
+      skill._id,
+      skill.resourceId ? badgeMapByResourceId.get(skill.resourceId) ?? {} : {},
+    ]),
+  )
+}
+
+async function upsertSkillModeration(
+  ctx: MutationCtx,
+  skillId: Id<'skills'>,
+  patch: Partial<Pick<Doc<'skillModeration'>, 'notes' | 'reason' | 'reviewedAt' | 'hiddenAt' | 'hiddenBy'>>,
+) {
+  const existing = await ctx.db
+    .query('skillModeration')
+    .withIndex('by_skill', (q) => q.eq('skillId', skillId))
+    .unique()
+  if (existing) {
+    await ctx.db.patch(existing._id, patch)
+    return
+  }
+  await ctx.db.insert('skillModeration', { skillId, ...patch })
+}
+
+async function upsertSkillReportStats(
+  ctx: MutationCtx,
+  skillId: Id<'skills'>,
+  now: number,
+) {
+  const existing = await ctx.db
+    .query('skillReportStats')
+    .withIndex('by_skill', (q) => q.eq('skillId', skillId))
+    .unique()
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      reportCount: existing.reportCount + 1,
+      lastReportedAt: now,
+    })
+    return
+  }
+  await ctx.db.insert('skillReportStats', {
+    skillId,
+    reportCount: 1,
+    lastReportedAt: now,
+  })
 }
 
 type PublicSkillEntry = {
@@ -48,13 +115,41 @@ type ManagementSkillEntry = {
   owner: Doc<'users'> | null
 }
 
-type BadgeKind = Doc<'skillBadges'>['kind']
+type ReportedSkillEntry = {
+  skill: Doc<'skills'>
+  latestVersion: Doc<'skillVersions'> | null
+  owner: Doc<'users'> | null
+  reportStats: Doc<'skillReportStats'>
+}
 
-async function buildPublicSkillEntries(ctx: QueryCtx, skills: Doc<'skills'>[]) {
+type BadgeKind = Doc<'resourceBadges'>['kind']
+
+function mergeResourceIntoSkill(skill: Doc<'skills'>, resource: Doc<'resources'>) {
+  return {
+    ...skill,
+    slug: resource.slug,
+    displayName: resource.displayName,
+    summary: resource.summary,
+    ownerUserId: resource.ownerUserId,
+    softDeletedAt: resource.softDeletedAt,
+    statsDownloads: resource.statsDownloads,
+    statsStars: resource.statsStars,
+    statsInstallsCurrent: resource.statsInstallsCurrent,
+    statsInstallsAllTime: resource.statsInstallsAllTime,
+    stats: resource.stats,
+    createdAt: resource.createdAt,
+    updatedAt: resource.updatedAt,
+  }
+}
+
+async function buildPublicSkillEntriesFromSkillResources(
+  ctx: QueryCtx,
+  entries: Array<{ skill: Doc<'skills'>; resource: Doc<'resources'> }>,
+) {
   const ownerHandleCache = new Map<Id<'users'>, Promise<string | null>>()
-  const badgeMapBySkillId = await getSkillBadgeMaps(
+  const badgeMapByResourceId = await getResourceBadgeMaps(
     ctx,
-    skills.map((skill) => skill._id),
+    entries.map((entry) => entry.resource._id),
   )
 
   const getOwnerHandle = (ownerUserId: Id<'users'>) => {
@@ -65,28 +160,51 @@ async function buildPublicSkillEntries(ctx: QueryCtx, skills: Doc<'skills'>[]) {
     return handlePromise
   }
 
-  const entries = await Promise.all(
-    skills.map(async (skill) => {
+  const hydrated = await Promise.all(
+    entries.map(async (entry) => {
+      if (!isSkillPublic(entry.skill)) return null
+      const mergedSkill = mergeResourceIntoSkill(entry.skill, entry.resource)
       const [latestVersion, ownerHandle] = await Promise.all([
-        skill.latestVersionId ? ctx.db.get(skill.latestVersionId) : null,
-        getOwnerHandle(skill.ownerUserId),
+        entry.skill.latestVersionId ? ctx.db.get(entry.skill.latestVersionId) : null,
+        entry.resource.ownerHandle
+          ? Promise.resolve(entry.resource.ownerHandle ?? null)
+          : getOwnerHandle(entry.resource.ownerUserId),
       ])
-      const badges = badgeMapBySkillId.get(skill._id) ?? {}
-      const publicSkill = toPublicSkill({ ...skill, badges })
+      const badges = badgeMapByResourceId.get(entry.resource._id) ?? {}
+      const publicSkill = toPublicSkill({ ...mergedSkill, badges })
       if (!publicSkill) return null
       return { skill: publicSkill, latestVersion, ownerHandle }
     }),
   )
 
-  return entries.filter((entry): entry is PublicSkillEntry => entry !== null)
+  return hydrated.filter((entry): entry is PublicSkillEntry => entry !== null)
+}
+
+async function buildPublicSkillEntriesFromResources(
+  ctx: QueryCtx,
+  resources: Doc<'resources'>[],
+) {
+  const skillEntries = await Promise.all(
+    resources.map(async (resource) => {
+      const skill = await ctx.db
+        .query('skills')
+        .withIndex('by_resource', (q) => q.eq('resourceId', resource._id))
+        .unique()
+      if (!skill || skill.softDeletedAt || resource.softDeletedAt || !isSkillPublic(skill)) return null
+      return { skill, resource }
+    }),
+  )
+
+  const validEntries = skillEntries.filter(
+    (entry): entry is { skill: Doc<'skills'>; resource: Doc<'resources'> } => Boolean(entry),
+  )
+
+  return buildPublicSkillEntriesFromSkillResources(ctx, validEntries)
 }
 
 async function buildManagementSkillEntries(ctx: QueryCtx, skills: Doc<'skills'>[]) {
   const ownerCache = new Map<Id<'users'>, Promise<Doc<'users'> | null>>()
-  const badgeMapBySkillId = await getSkillBadgeMaps(
-    ctx,
-    skills.map((skill) => skill._id),
-  )
+  const badgeMapBySkillId = await getBadgeMapBySkillId(ctx, skills)
 
   const getOwner = (ownerUserId: Id<'users'>) => {
     const cached = ownerCache.get(ownerUserId)
@@ -109,10 +227,7 @@ async function buildManagementSkillEntries(ctx: QueryCtx, skills: Doc<'skills'>[
 }
 
 async function attachBadgesToSkills(ctx: QueryCtx, skills: Doc<'skills'>[]) {
-  const badgeMapBySkillId = await getSkillBadgeMaps(
-    ctx,
-    skills.map((skill) => skill._id),
-  )
+  const badgeMapBySkillId = await getBadgeMapBySkillId(ctx, skills)
   return skills.map((skill) => ({
     ...skill,
     badges: badgeMapBySkillId.get(skill._id) ?? {},
@@ -121,15 +236,20 @@ async function attachBadgesToSkills(ctx: QueryCtx, skills: Doc<'skills'>[]) {
 
 async function loadHighlightedSkills(ctx: QueryCtx, limit: number) {
   const entries = await ctx.db
-    .query('skillBadges')
+    .query('resourceBadges')
     .withIndex('by_kind_at', (q) => q.eq('kind', 'highlighted'))
     .order('desc')
     .take(MAX_LIST_TAKE)
 
   const skills: Doc<'skills'>[] = []
   for (const badge of entries) {
-    const skill = await ctx.db.get(badge.skillId)
-    if (!skill || skill.softDeletedAt) continue
+    const resource = await ctx.db.get(badge.resourceId)
+    if (!resource || resource.softDeletedAt || resource.type !== 'skill') continue
+    const skill = await ctx.db
+      .query('skills')
+      .withIndex('by_resource', (q) => q.eq('resourceId', resource._id))
+      .unique()
+    if (!skill || skill.softDeletedAt || !isSkillPublic(skill)) continue
     skills.push(skill)
     if (skills.length >= limit) break
   }
@@ -139,31 +259,34 @@ async function loadHighlightedSkills(ctx: QueryCtx, limit: number) {
 
 async function upsertSkillBadge(
   ctx: MutationCtx,
-  skillId: Id<'skills'>,
+  skill: Doc<'skills'>,
   kind: BadgeKind,
   userId: Id<'users'>,
   at: number,
 ) {
+  const resourceId = await resolveSkillResourceId(ctx, skill)
   const existing = await ctx.db
-    .query('skillBadges')
-    .withIndex('by_skill_kind', (q) => q.eq('skillId', skillId).eq('kind', kind))
+    .query('resourceBadges')
+    .withIndex('by_resource_kind', (q) => q.eq('resourceId', resourceId).eq('kind', kind))
     .unique()
   if (existing) {
     await ctx.db.patch(existing._id, { byUserId: userId, at })
     return existing._id
   }
-  return ctx.db.insert('skillBadges', {
-    skillId,
+  return ctx.db.insert('resourceBadges', {
+    resourceId,
     kind,
     byUserId: userId,
     at,
   })
 }
 
-async function removeSkillBadge(ctx: MutationCtx, skillId: Id<'skills'>, kind: BadgeKind) {
+async function removeSkillBadge(ctx: MutationCtx, skill: Doc<'skills'>, kind: BadgeKind) {
+  const resourceId = skill.resourceId
+  if (!resourceId) return
   const existing = await ctx.db
-    .query('skillBadges')
-    .withIndex('by_skill_kind', (q) => q.eq('skillId', skillId).eq('kind', kind))
+    .query('resourceBadges')
+    .withIndex('by_resource_kind', (q) => q.eq('resourceId', resourceId).eq('kind', kind))
     .unique()
   if (existing) {
     await ctx.db.delete(existing._id)
@@ -177,24 +300,34 @@ export const getBySlug = query({
       .query('skills')
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
       .unique()
-    if (!skill || skill.softDeletedAt) return null
-    const latestVersion = skill.latestVersionId ? await ctx.db.get(skill.latestVersionId) : null
-    const owner = toPublicUser(await ctx.db.get(skill.ownerUserId))
-    const badges = await getSkillBadgeMap(ctx, skill._id)
+    if (!skill) return null
+    if (skill.softDeletedAt) {
+      if (!AUTH_BYPASS) {
+        const userId = await getAuthUserId(ctx)
+        if (!userId) return null
+        const user = await ctx.db.get(userId)
+        if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return null
+      }
+    }
+    if (!isSkillPublic(skill)) return null
+    const [latestVersion, owner, resource, badges] = await Promise.all([
+      skill.latestVersionId ? ctx.db.get(skill.latestVersionId) : null,
+      ctx.db.get(skill.ownerUserId),
+      skill.resourceId ? ctx.db.get(skill.resourceId) : null,
+      getBadgesForSkill(ctx, skill),
+    ])
 
     const forkOfSkill = skill.forkOf?.skillId ? await ctx.db.get(skill.forkOf.skillId) : null
     const forkOfOwner = forkOfSkill ? await ctx.db.get(forkOfSkill.ownerUserId) : null
 
-    const canonicalSkill = skill.canonicalSkillId ? await ctx.db.get(skill.canonicalSkillId) : null
-    const canonicalOwner = canonicalSkill ? await ctx.db.get(canonicalSkill.ownerUserId) : null
-
-    const publicSkill = toPublicSkill({ ...skill, badges })
+    const mergedSkill = resource ? mergeResourceIntoSkill(skill, resource) : skill
+    const publicSkill = toPublicSkill({ ...mergedSkill, badges })
     if (!publicSkill) return null
 
     return {
       skill: publicSkill,
       latestVersion,
-      owner,
+      owner: toPublicUser(owner),
       forkOf: forkOfSkill
         ? {
             kind: skill.forkOf?.kind ?? 'fork',
@@ -206,18 +339,6 @@ export const getBySlug = query({
             owner: {
               handle: forkOfOwner?.handle ?? forkOfOwner?.name ?? null,
               userId: forkOfOwner?._id ?? null,
-            },
-          }
-        : null,
-      canonical: canonicalSkill
-        ? {
-            skill: {
-              slug: canonicalSkill.slug,
-              displayName: canonicalSkill.displayName,
-            },
-            owner: {
-              handle: canonicalOwner?.handle ?? canonicalOwner?.name ?? null,
-              userId: canonicalOwner?._id ?? null,
             },
           }
         : null,
@@ -257,7 +378,9 @@ export const list = query({
         .withIndex('by_batch', (q) => q.eq('batch', args.batch))
         .order('desc')
         .take(takeLimit)
-      const filtered = entries.filter((skill) => !skill.softDeletedAt).slice(0, limit)
+      const filtered = entries
+        .filter((skill) => !skill.softDeletedAt && isSkillPublic(skill))
+        .slice(0, limit)
       const withBadges = await attachBadgesToSkills(ctx, filtered)
       return withBadges
         .map((skill) => toPublicSkill(skill))
@@ -265,23 +388,23 @@ export const list = query({
     }
     const ownerUserId = args.ownerUserId
     if (ownerUserId) {
-      const entries = await ctx.db
-        .query('skills')
-        .withIndex('by_owner', (q) => q.eq('ownerUserId', ownerUserId))
+      const resources = await ctx.db
+        .query('resources')
+        .withIndex('by_type_owner_updated', (q) =>
+          q.eq('type', 'skill').eq('ownerUserId', ownerUserId),
+        )
         .order('desc')
         .take(takeLimit)
-      const filtered = entries.filter((skill) => !skill.softDeletedAt).slice(0, limit)
-      const withBadges = await attachBadgesToSkills(ctx, filtered)
-      return withBadges
-        .map((skill) => toPublicSkill(skill))
-        .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill))
+      const entries = await buildPublicSkillEntriesFromResources(ctx, resources)
+      return entries.map((entry) => entry.skill).slice(0, limit)
     }
-    const entries = await ctx.db.query('skills').order('desc').take(takeLimit)
-    const filtered = entries.filter((skill) => !skill.softDeletedAt).slice(0, limit)
-    const withBadges = await attachBadgesToSkills(ctx, filtered)
-    return withBadges
-      .map((skill) => toPublicSkill(skill))
-      .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill))
+    const resources = await ctx.db
+      .query('resources')
+      .withIndex('by_type_updated', (q) => q.eq('type', 'skill'))
+      .order('desc')
+      .take(takeLimit)
+    const entries = await buildPublicSkillEntriesFromResources(ctx, resources)
+    return entries.map((entry) => entry.skill).slice(0, limit)
   },
 })
 
@@ -307,16 +430,24 @@ export const listWithLatest = query({
       }
     } else if (args.ownerUserId) {
       const ownerUserId = args.ownerUserId
-      entries = await ctx.db
-        .query('skills')
-        .withIndex('by_owner', (q) => q.eq('ownerUserId', ownerUserId))
+      const resources = await ctx.db
+        .query('resources')
+        .withIndex('by_type_owner_updated', (q) =>
+          q.eq('type', 'skill').eq('ownerUserId', ownerUserId),
+        )
         .order('desc')
         .take(takeLimit)
+      return buildPublicSkillEntriesFromResources(ctx, resources)
     } else {
-      entries = await ctx.db.query('skills').order('desc').take(takeLimit)
+      const resources = await ctx.db
+        .query('resources')
+        .withIndex('by_type_updated', (q) => q.eq('type', 'skill'))
+        .order('desc')
+        .take(takeLimit)
+      return buildPublicSkillEntriesFromResources(ctx, resources)
     }
 
-    const filtered = entries.filter((skill) => !skill.softDeletedAt)
+    const filtered = entries.filter((skill) => !skill.softDeletedAt && isSkillPublic(skill))
     const withBadges = await attachBadgesToSkills(ctx, filtered)
     const ordered =
       args.batch === 'highlighted'
@@ -399,97 +530,129 @@ export const listReportedSkills = query({
     assertModerator(user)
     const limit = clampInt(args.limit ?? 25, 1, MAX_LIST_BULK_LIMIT)
     const takeLimit = Math.min(limit * 5, MAX_LIST_TAKE)
-    const entries = await ctx.db.query('skills').order('desc').take(takeLimit)
-    const reported = entries
-      .filter((skill) => (skill.reportCount ?? 0) > 0)
-      .sort((a, b) => (b.lastReportedAt ?? 0) - (a.lastReportedAt ?? 0))
-      .slice(0, limit)
-    return buildManagementSkillEntries(ctx, reported)
-  },
-})
 
-export const listDuplicateCandidates = query({
-  args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const { user } = await requireUser(ctx)
-    assertModerator(user)
-    const limit = clampInt(args.limit ?? 20, 1, MAX_LIST_BULK_LIMIT)
-    const takeLimit = Math.min(limit * 5, MAX_LIST_TAKE)
-    const skills = await ctx.db.query('skills').order('desc').take(takeLimit)
-    const entries = skills.filter((skill) => !skill.softDeletedAt).slice(0, limit)
+    const reportStats = await ctx.db
+      .query('skillReportStats')
+      .withIndex('by_last_reported', (q) => q)
+      .order('desc')
+      .take(takeLimit)
 
-    const results: Array<{
-      skill: Doc<'skills'>
-      latestVersion: Doc<'skillVersions'> | null
-      fingerprint: string | null
-      matches: Array<{ skill: Doc<'skills'>; owner: Doc<'users'> | null }>
-      owner: Doc<'users'> | null
-    }> = []
-
-    for (const skill of entries) {
-      const latestVersion = skill.latestVersionId ? await ctx.db.get(skill.latestVersionId) : null
-      const fingerprint = latestVersion?.fingerprint ?? null
-      if (!fingerprint) continue
-
-      const matchedFingerprints = await ctx.db
-        .query('skillVersionFingerprints')
-        .withIndex('by_fingerprint', (q) => q.eq('fingerprint', fingerprint))
-        .take(10)
-
-      const matchEntries: Array<{ skill: Doc<'skills'>; owner: Doc<'users'> | null }> = []
-      for (const match of matchedFingerprints) {
-        if (match.skillId === skill._id) continue
-        const matchSkill = await ctx.db.get(match.skillId)
-        if (!matchSkill || matchSkill.softDeletedAt) continue
-        const matchOwner = await ctx.db.get(matchSkill.ownerUserId)
-        matchEntries.push({ skill: matchSkill, owner: matchOwner })
-      }
-
-      if (matchEntries.length === 0) continue
-
-      const owner = await ctx.db.get(skill.ownerUserId)
-      results.push({
-        skill,
-        latestVersion,
-        fingerprint,
-        matches: matchEntries,
-        owner,
-      })
+    const results: ReportedSkillEntry[] = []
+    for (const stats of reportStats) {
+      if (stats.reportCount <= 0) continue
+      const skill = await ctx.db.get(stats.skillId)
+      if (!skill || skill.softDeletedAt) continue
+      const [latestVersion, owner] = await Promise.all([
+        skill.latestVersionId ? ctx.db.get(skill.latestVersionId) : null,
+        ctx.db.get(skill.ownerUserId),
+      ])
+      results.push({ skill, latestVersion, owner, reportStats: stats })
+      if (results.length >= limit) break
     }
 
     return results
   },
 })
 
+export const getLatestSkillEmbeddingInternal = internalQuery({
+  args: { skillId: v.id('skills') },
+  handler: async (ctx, args) => {
+    const embeddings = await ctx.db
+      .query('skillEmbeddings')
+      .withIndex('by_skill', (q) => q.eq('skillId', args.skillId))
+      .collect()
+    return embeddings.find((entry) => entry.isLatest) ?? embeddings[0] ?? null
+  },
+})
+
+export const findSimilarSkills = action({
+  args: { skillId: v.id('skills'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const { user } = await requireUserFromAction(ctx)
+    assertModerator(user)
+    const limit = clampInt(args.limit ?? 8, 1, 25)
+
+    const sourceEmbedding = (await ctx.runQuery(internal.skills.getLatestSkillEmbeddingInternal, {
+      skillId: args.skillId,
+    })) as Doc<'skillEmbeddings'> | null
+
+    if (!sourceEmbedding) return []
+
+    const results = await ctx.vectorSearch('skillEmbeddings', 'by_embedding', {
+      vector: sourceEmbedding.embedding,
+      limit: Math.min(limit * 4, 50),
+      filter: (q) => q.or(q.eq('visibility', 'latest'), q.eq('visibility', 'latest-approved')),
+    })
+
+    const filtered = results.filter((result) => result._id !== sourceEmbedding._id)
+    if (filtered.length === 0) return []
+
+    const hydrated = (await ctx.runQuery(internal.search.hydrateResults, {
+      embeddingIds: filtered.map((result) => result._id),
+    })) as Array<{
+      embeddingId: Id<'skillEmbeddings'>
+      skill: NonNullable<ReturnType<typeof toPublicSkill>>
+      version: Doc<'skillVersions'> | null
+      ownerHandle: string | null
+      resourceId: Id<'resources'> | null
+    }>
+
+    const scoreById = new Map(filtered.map((result) => [result._id, result._score]))
+
+    const entries = hydrated
+      .filter((entry) => entry.skill._id !== args.skillId)
+      .map((entry) => ({
+        skill: entry.skill,
+        latestVersion: entry.version,
+        ownerHandle: entry.ownerHandle,
+        score: scoreById.get(entry.embeddingId) ?? 0,
+      }))
+
+    return entries.slice(0, limit)
+  },
+})
+
+async function createSkillReport(
+  ctx: MutationCtx,
+  args: { skillId: Id<'skills'>; userId: Id<'users'>; reason?: string },
+) {
+  const skill = await ctx.db.get(args.skillId)
+  if (!skill || skill.softDeletedAt) throw new Error('Skill not found')
+
+  const existing = await ctx.db
+    .query('skillReports')
+    .withIndex('by_skill_user', (q) => q.eq('skillId', args.skillId).eq('userId', args.userId))
+    .unique()
+  if (existing) return { ok: true as const, reported: false, alreadyReported: true }
+
+  const now = Date.now()
+  const reason = args.reason?.trim()
+  await ctx.db.insert('skillReports', {
+    skillId: args.skillId,
+    userId: args.userId,
+    reason: reason ? reason.slice(0, 500) : undefined,
+    createdAt: now,
+  })
+
+  await upsertSkillReportStats(ctx, skill._id, now)
+  await ctx.db.patch(skill._id, { updatedAt: now })
+  await upsertResourceForSkill(ctx, skill, { updatedAt: now })
+
+  return { ok: true as const, reported: true, alreadyReported: false }
+}
+
 export const report = mutation({
   args: { skillId: v.id('skills'), reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const { userId } = await requireUser(ctx)
-    const skill = await ctx.db.get(args.skillId)
-    if (!skill || skill.softDeletedAt) throw new Error('Skill not found')
+    return createSkillReport(ctx, { ...args, userId })
+  },
+})
 
-    const existing = await ctx.db
-      .query('skillReports')
-      .withIndex('by_skill_user', (q) => q.eq('skillId', args.skillId).eq('userId', userId))
-      .unique()
-    if (existing) return { ok: true as const, reported: false, alreadyReported: true }
-
-    const now = Date.now()
-    const reason = args.reason?.trim()
-    await ctx.db.insert('skillReports', {
-      skillId: args.skillId,
-      userId,
-      reason: reason ? reason.slice(0, 500) : undefined,
-      createdAt: now,
-    })
-
-    await ctx.db.patch(skill._id, {
-      reportCount: (skill.reportCount ?? 0) + 1,
-      lastReportedAt: now,
-      updatedAt: now,
-    })
-
-    return { ok: true as const, reported: true, alreadyReported: false }
+export const reportInternal = internalMutation({
+  args: { skillId: v.id('skills'), userId: v.id('users'), reason: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    return createSkillReport(ctx, args)
   },
 })
 
@@ -515,41 +678,43 @@ export const listPublicPage = query({
 
     if (sort === 'updated') {
       const { page, isDone, continueCursor } = await ctx.db
-        .query('skills')
-        .withIndex('by_updated', (q) => q)
+        .query('resources')
+        .withIndex('by_type_active_updated', (q) =>
+          q.eq('type', 'skill').eq('softDeletedAt', undefined),
+        )
         .order('desc')
         .paginate({ cursor: args.cursor ?? null, numItems: limit })
 
-      const skills = page.filter((skill) => !skill.softDeletedAt)
-      const items = await buildPublicSkillEntries(ctx, skills)
+      const items = await buildPublicSkillEntriesFromResources(ctx, page)
 
       return { items, nextCursor: isDone ? null : continueCursor }
     }
 
     if (sort === 'trending') {
       const entries = await getTrendingEntries(ctx, limit)
-      const skills: Doc<'skills'>[] = []
+      const pairs: Array<{ skill: Doc<'skills'>; resource: Doc<'resources'> }> = []
 
       for (const entry of entries) {
         const skill = await ctx.db.get(entry.skillId)
-        if (!skill || skill.softDeletedAt) continue
-        skills.push(skill)
-        if (skills.length >= limit) break
+        if (!skill || skill.softDeletedAt || !skill.resourceId) continue
+        const resource = await ctx.db.get(skill.resourceId)
+        if (!resource || resource.softDeletedAt) continue
+        pairs.push({ skill, resource })
+        if (pairs.length >= limit) break
       }
 
-      const items = await buildPublicSkillEntries(ctx, skills)
+      const items = await buildPublicSkillEntriesFromSkillResources(ctx, pairs)
       return { items, nextCursor: null }
     }
 
-    const index = sortToIndex(sort)
+    const index = sortToResourceIndex(sort)
     const page = await ctx.db
-      .query('skills')
-      .withIndex(index, (q) => q)
+      .query('resources')
+      .withIndex(index, (q) => q.eq('type', 'skill').eq('softDeletedAt', undefined))
       .order('desc')
-      .take(Math.min(limit * 5, MAX_LIST_TAKE))
+      .take(Math.min(limit, MAX_LIST_TAKE))
 
-    const filtered = page.filter((skill) => !skill.softDeletedAt).slice(0, limit)
-    const items = await buildPublicSkillEntries(ctx, filtered)
+    const items = await buildPublicSkillEntriesFromResources(ctx, page)
     return { items, nextCursor: null }
   },
 })
@@ -570,13 +735,15 @@ export const listPublicPageV2 = query({
     // Use the new index to filter out soft-deleted skills at query time.
     // softDeletedAt === undefined means active (non-deleted) skills only.
     const result = await paginator(ctx.db, schema)
-      .query('skills')
-      .withIndex('by_active_updated', (q) => q.eq('softDeletedAt', undefined))
+      .query('resources')
+      .withIndex('by_type_active_updated', (q) =>
+        q.eq('type', 'skill').eq('softDeletedAt', undefined),
+      )
       .order('desc')
       .paginate(args.paginationOpts)
 
     // Build the public skill entries (fetch latestVersion + ownerHandle)
-    const items = await buildPublicSkillEntries(ctx, result.page)
+    const items = await buildPublicSkillEntriesFromResources(ctx, result.page)
 
     return {
       ...result,
@@ -585,22 +752,22 @@ export const listPublicPageV2 = query({
   },
 })
 
-function sortToIndex(
+function sortToResourceIndex(
   sort: 'downloads' | 'stars' | 'installsCurrent' | 'installsAllTime',
 ):
-  | 'by_stats_downloads'
-  | 'by_stats_stars'
-  | 'by_stats_installs_current'
-  | 'by_stats_installs_all_time' {
+  | 'by_type_active_stats_downloads'
+  | 'by_type_active_stats_stars'
+  | 'by_type_active_stats_installs_current'
+  | 'by_type_active_stats_installs_all_time' {
   switch (sort) {
     case 'downloads':
-      return 'by_stats_downloads'
+      return 'by_type_active_stats_downloads'
     case 'stars':
-      return 'by_stats_stars'
+      return 'by_type_active_stats_stars'
     case 'installsCurrent':
-      return 'by_stats_installs_current'
+      return 'by_type_active_stats_installs_current'
     case 'installsAllTime':
-      return 'by_stats_installs_all_time'
+      return 'by_type_active_stats_installs_all_time'
   }
 }
 
@@ -843,11 +1010,13 @@ export const updateTags = mutation({
     }
 
     const latestEntry = args.tags.find((entry) => entry.tag === 'latest')
+    const now = Date.now()
     await ctx.db.patch(skill._id, {
       tags: nextTags,
       latestVersionId: latestEntry ? latestEntry.versionId : skill.latestVersionId,
-      updatedAt: Date.now(),
+      updatedAt: now,
     })
+    await upsertResourceForSkill(ctx, skill, { updatedAt: now })
 
     if (latestEntry) {
       const embeddings = await ctx.db
@@ -877,15 +1046,14 @@ export const setRedactionApproved = mutation({
 
     const now = Date.now()
     if (args.approved) {
-      await upsertSkillBadge(ctx, skill._id, 'redactionApproved', user._id, now)
+      await upsertSkillBadge(ctx, skill, 'redactionApproved', user._id, now)
     } else {
-      await removeSkillBadge(ctx, skill._id, 'redactionApproved')
+      await removeSkillBadge(ctx, skill, 'redactionApproved')
     }
 
-    await ctx.db.patch(skill._id, {
-      lastReviewedAt: now,
-      updatedAt: now,
-    })
+    await ctx.db.patch(skill._id, { updatedAt: now })
+    await upsertResourceForSkill(ctx, skill, { updatedAt: now })
+    await upsertSkillModeration(ctx, skill._id, { reviewedAt: now })
 
     const embeddings = await ctx.db
       .query('skillEmbeddings')
@@ -917,22 +1085,23 @@ export const setBatch = mutation({
     assertModerator(user)
     const skill = await ctx.db.get(args.skillId)
     if (!skill) throw new Error('Skill not found')
-    const existingBadges = await getSkillBadgeMap(ctx, skill._id)
-    const previousHighlighted = isSkillHighlighted({ badges: existingBadges })
+    const existingBadges = await getBadgesForSkill(ctx, skill)
+    const previousHighlighted = isResourceHighlighted({ badges: existingBadges })
     const nextBatch = args.batch?.trim() || undefined
     const nextHighlighted = nextBatch === 'highlighted'
     const now = Date.now()
 
     if (nextHighlighted) {
-      await upsertSkillBadge(ctx, skill._id, 'highlighted', user._id, now)
+      await upsertSkillBadge(ctx, skill, 'highlighted', user._id, now)
     } else {
-      await removeSkillBadge(ctx, skill._id, 'highlighted')
+      await removeSkillBadge(ctx, skill, 'highlighted')
     }
 
     await ctx.db.patch(skill._id, {
       batch: nextBatch,
       updatedAt: now,
     })
+    await upsertResourceForSkill(ctx, skill, { updatedAt: now })
     await ctx.db.insert('auditLogs', {
       actorUserId: user._id,
       action: 'badge.highlighted',
@@ -960,10 +1129,16 @@ export const setSoftDeleted = mutation({
     await ctx.db.patch(skill._id, {
       softDeletedAt: args.deleted ? now : undefined,
       moderationStatus: args.deleted ? 'hidden' : 'active',
+      updatedAt: now,
+    })
+    await upsertResourceForSkill(ctx, skill, {
+      softDeletedAt: args.deleted ? now : undefined,
+      updatedAt: now,
+    })
+    await upsertSkillModeration(ctx, skill._id, {
+      reviewedAt: now,
       hiddenAt: args.deleted ? now : undefined,
       hiddenBy: args.deleted ? user._id : undefined,
-      lastReviewedAt: now,
-      updatedAt: now,
     })
 
     const embeddings = await ctx.db
@@ -987,6 +1162,28 @@ export const setSoftDeleted = mutation({
       metadata: { slug: skill.slug, softDeletedAt: args.deleted ? now : null },
       createdAt: now,
     })
+
+    if (args.deleted) {
+      const [resource, owner] = await Promise.all([
+        skill.resourceId ? ctx.db.get(skill.resourceId) : null,
+        ctx.db.get(skill.ownerUserId),
+      ])
+      const ownerHandles = [
+        resource?.ownerHandle,
+        owner?.handle,
+        owner?.displayName,
+        owner?.name,
+        owner?._id,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => String(value))
+      if (ownerHandles.length > 0) {
+        void ctx.scheduler.runAfter(0, internal.githubBackupsNode.deleteSkillBackupInternal, {
+          slug: skill.slug,
+          ownerHandles,
+        })
+      }
+    }
   },
 })
 
@@ -1006,9 +1203,10 @@ export const changeOwner = mutation({
     const now = Date.now()
     await ctx.db.patch(skill._id, {
       ownerUserId: args.ownerUserId,
-      lastReviewedAt: now,
       updatedAt: now,
     })
+    await upsertResourceForSkill(ctx, skill, { ownerUserId: args.ownerUserId, updatedAt: now })
+    await upsertSkillModeration(ctx, skill._id, { reviewedAt: now })
 
     const embeddings = await ctx.db
       .query('skillEmbeddings')
@@ -1032,69 +1230,6 @@ export const changeOwner = mutation({
   },
 })
 
-export const setDuplicate = mutation({
-  args: { skillId: v.id('skills'), canonicalSlug: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const { user } = await requireUser(ctx)
-    assertModerator(user)
-    const skill = await ctx.db.get(args.skillId)
-    if (!skill) throw new Error('Skill not found')
-
-    const now = Date.now()
-    const canonicalSlug = args.canonicalSlug?.trim().toLowerCase()
-
-    if (!canonicalSlug) {
-      await ctx.db.patch(skill._id, {
-        canonicalSkillId: undefined,
-        forkOf: undefined,
-        lastReviewedAt: now,
-        updatedAt: now,
-      })
-      await ctx.db.insert('auditLogs', {
-        actorUserId: user._id,
-        action: 'skill.duplicate.clear',
-        targetType: 'skill',
-        targetId: skill._id,
-        metadata: { canonicalSlug: null },
-        createdAt: now,
-      })
-      return
-    }
-
-    const canonical = await ctx.db
-      .query('skills')
-      .withIndex('by_slug', (q) => q.eq('slug', canonicalSlug))
-      .unique()
-    if (!canonical) throw new Error('Canonical skill not found')
-    if (canonical._id === skill._id) throw new Error('Cannot duplicate a skill onto itself')
-
-    const canonicalVersion = canonical.latestVersionId
-      ? await ctx.db.get(canonical.latestVersionId)
-      : null
-
-    await ctx.db.patch(skill._id, {
-      canonicalSkillId: canonical._id,
-      forkOf: {
-        skillId: canonical._id,
-        kind: 'duplicate',
-        version: canonicalVersion?.version,
-        at: now,
-      },
-      lastReviewedAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert('auditLogs', {
-      actorUserId: user._id,
-      action: 'skill.duplicate.set',
-      targetType: 'skill',
-      targetId: skill._id,
-      metadata: { canonicalSlug },
-      createdAt: now,
-    })
-  },
-})
-
 export const setOfficialBadge = mutation({
   args: { skillId: v.id('skills'), official: v.boolean() },
   handler: async (ctx, args) => {
@@ -1105,15 +1240,14 @@ export const setOfficialBadge = mutation({
 
     const now = Date.now()
     if (args.official) {
-      await upsertSkillBadge(ctx, skill._id, 'official', user._id, now)
+      await upsertSkillBadge(ctx, skill, 'official', user._id, now)
     } else {
-      await removeSkillBadge(ctx, skill._id, 'official')
+      await removeSkillBadge(ctx, skill, 'official')
     }
 
-    await ctx.db.patch(skill._id, {
-      lastReviewedAt: now,
-      updatedAt: now,
-    })
+    await ctx.db.patch(skill._id, { updatedAt: now })
+    await upsertResourceForSkill(ctx, skill, { updatedAt: now })
+    await upsertSkillModeration(ctx, skill._id, { reviewedAt: now })
 
     await ctx.db.insert('auditLogs', {
       actorUserId: user._id,
@@ -1136,15 +1270,14 @@ export const setDeprecatedBadge = mutation({
 
     const now = Date.now()
     if (args.deprecated) {
-      await upsertSkillBadge(ctx, skill._id, 'deprecated', user._id, now)
+      await upsertSkillBadge(ctx, skill, 'deprecated', user._id, now)
     } else {
-      await removeSkillBadge(ctx, skill._id, 'deprecated')
+      await removeSkillBadge(ctx, skill, 'deprecated')
     }
 
-    await ctx.db.patch(skill._id, {
-      lastReviewedAt: now,
-      updatedAt: now,
-    })
+    await ctx.db.patch(skill._id, { updatedAt: now })
+    await upsertResourceForSkill(ctx, skill, { updatedAt: now })
+    await upsertSkillModeration(ctx, skill._id, { reviewedAt: now })
 
     await ctx.db.insert('auditLogs', {
       actorUserId: user._id,
@@ -1222,12 +1355,31 @@ export const hardDelete = mutation({
       await ctx.db.delete(star._id)
     }
 
-    const badges = await ctx.db
-      .query('skillBadges')
+    const resourceId = skill.resourceId
+    if (resourceId) {
+      const badges = await ctx.db
+        .query('resourceBadges')
+        .withIndex('by_resource', (q) => q.eq('resourceId', resourceId))
+        .collect()
+      for (const badge of badges) {
+        await ctx.db.delete(badge._id)
+      }
+    }
+
+    const moderation = await ctx.db
+      .query('skillModeration')
       .withIndex('by_skill', (q) => q.eq('skillId', skill._id))
       .collect()
-    for (const badge of badges) {
-      await ctx.db.delete(badge._id)
+    for (const entry of moderation) {
+      await ctx.db.delete(entry._id)
+    }
+
+    const reportStats = await ctx.db
+      .query('skillReportStats')
+      .withIndex('by_skill', (q) => q.eq('skillId', skill._id))
+      .collect()
+    for (const entry of reportStats) {
+      await ctx.db.delete(entry._id)
     }
 
     const dailyStats = await ctx.db
@@ -1273,17 +1425,18 @@ export const hardDelete = mutation({
     const relatedSkills = await ctx.db.query('skills').collect()
     for (const related of relatedSkills) {
       if (related._id === skill._id) continue
-      if (related.canonicalSkillId === skill._id || related.forkOf?.skillId === skill._id) {
+      if (related.forkOf?.skillId === skill._id) {
         await ctx.db.patch(related._id, {
-          canonicalSkillId:
-            related.canonicalSkillId === skill._id ? undefined : related.canonicalSkillId,
-          forkOf: related.forkOf?.skillId === skill._id ? undefined : related.forkOf,
+          forkOf: undefined,
           updatedAt: Date.now(),
         })
       }
     }
 
     await ctx.db.delete(skill._id)
+    if (skill.resourceId) {
+      await ctx.db.delete(skill.resourceId)
+    }
 
     await ctx.db.insert('auditLogs', {
       actorUserId: user._id,
@@ -1347,11 +1500,10 @@ export const insertVersion = internalMutation({
       const forkOfSlug = args.forkOf?.slug.trim().toLowerCase() || ''
       const forkOfVersion = args.forkOf?.version?.trim() || undefined
 
-      let canonicalSkillId: Id<'skills'> | undefined
       let forkOf:
         | {
             skillId: Id<'skills'>
-            kind: 'fork' | 'duplicate'
+            kind: 'fork'
             version?: string
             at: number
           }
@@ -1363,22 +1515,11 @@ export const insertVersion = internalMutation({
           .withIndex('by_slug', (q) => q.eq('slug', forkOfSlug))
           .unique()
         if (!upstream || upstream.softDeletedAt) throw new Error('Upstream skill not found')
-        canonicalSkillId = upstream.canonicalSkillId ?? upstream._id
         forkOf = {
           skillId: upstream._id,
           kind: 'fork',
           version: forkOfVersion,
           at: now,
-        }
-      } else {
-        const match = await findCanonicalSkillForFingerprint(ctx, args.fingerprint)
-        if (match) {
-          canonicalSkillId = match.canonicalSkillId ?? match._id
-          forkOf = {
-            skillId: match._id,
-            kind: 'duplicate',
-            at: now,
-          }
         }
       }
 
@@ -1389,26 +1530,41 @@ export const insertVersion = internalMutation({
         parsed: args.parsed,
         files: args.files,
       })
-      const skillId = await ctx.db.insert('skills', {
+      const resourceId = await ctx.db.insert('resources', {
+        type: 'skill',
         slug: args.slug,
         displayName: args.displayName,
         summary: summaryValue,
         ownerUserId: userId,
-        canonicalSkillId,
+        ownerHandle: user.handle ?? user._id,
+        softDeletedAt: undefined,
+        statsDownloads: 0,
+        statsStars: 0,
+        statsInstallsCurrent: 0,
+        statsInstallsAllTime: 0,
+        stats: {
+          downloads: 0,
+          installsCurrent: 0,
+          installsAllTime: 0,
+          stars: 0,
+          versions: 0,
+          comments: 0,
+        },
+        createdAt: now,
+        updatedAt: now,
+      })
+      const skillId = await ctx.db.insert('skills', {
+        resourceId,
+        slug: args.slug,
+        displayName: args.displayName,
+        summary: summaryValue,
+        ownerUserId: userId,
         forkOf,
         latestVersionId: undefined,
         tags: {},
         softDeletedAt: undefined,
-        badges: {
-          redactionApproved: undefined,
-          highlighted: undefined,
-          official: undefined,
-          deprecated: undefined,
-        },
         moderationStatus: 'active',
         moderationFlags: moderationFlags.length ? moderationFlags : undefined,
-        reportCount: 0,
-        lastReportedAt: undefined,
         statsDownloads: 0,
         statsStars: 0,
         statsInstallsCurrent: 0,
@@ -1465,19 +1621,31 @@ export const insertVersion = internalMutation({
       files: args.files,
     })
 
+    const nextStats = { ...skill.stats, versions: skill.stats.versions + 1 }
     await ctx.db.patch(skill._id, {
       displayName: args.displayName,
       summary: nextSummary ?? undefined,
       latestVersionId: versionId,
       tags: nextTags,
-      stats: { ...skill.stats, versions: skill.stats.versions + 1 },
+      stats: nextStats,
       softDeletedAt: undefined,
       moderationStatus: skill.moderationStatus ?? 'active',
       moderationFlags: moderationFlags.length ? moderationFlags : undefined,
       updatedAt: now,
     })
+    await upsertResourceForSkill(ctx, skill, {
+      displayName: args.displayName,
+      summary: nextSummary ?? undefined,
+      softDeletedAt: undefined,
+      stats: nextStats,
+      statsDownloads: skill.statsDownloads,
+      statsStars: skill.statsStars,
+      statsInstallsCurrent: skill.statsInstallsCurrent,
+      statsInstallsAllTime: skill.statsInstallsAllTime,
+      updatedAt: now,
+    })
 
-    const badgeMap = await getSkillBadgeMap(ctx, skill._id)
+    const badgeMap = await getBadgesForSkill(ctx, skill)
     const isApproved = Boolean(badgeMap.redactionApproved)
 
     const embeddingId = await ctx.db.insert('skillEmbeddings', {
@@ -1543,10 +1711,16 @@ export const setSkillSoftDeletedInternal = internalMutation({
     await ctx.db.patch(skill._id, {
       softDeletedAt: args.deleted ? now : undefined,
       moderationStatus: args.deleted ? 'hidden' : 'active',
+      updatedAt: now,
+    })
+    await upsertResourceForSkill(ctx, skill, {
+      softDeletedAt: args.deleted ? now : undefined,
+      updatedAt: now,
+    })
+    await upsertSkillModeration(ctx, skill._id, {
+      reviewedAt: now,
       hiddenAt: args.deleted ? now : undefined,
       hiddenBy: args.deleted ? args.userId : undefined,
-      lastReviewedAt: now,
-      updatedAt: now,
     })
 
     const embeddings = await ctx.db
@@ -1571,6 +1745,28 @@ export const setSkillSoftDeletedInternal = internalMutation({
       createdAt: now,
     })
 
+    if (args.deleted) {
+      const [resource, owner] = await Promise.all([
+        skill.resourceId ? ctx.db.get(skill.resourceId) : null,
+        ctx.db.get(skill.ownerUserId),
+      ])
+      const ownerHandles = [
+        resource?.ownerHandle,
+        owner?.handle,
+        owner?.displayName,
+        owner?.name,
+        owner?._id,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => String(value))
+      if (ownerHandles.length > 0) {
+        void ctx.scheduler.runAfter(0, internal.githubBackupsNode.deleteSkillBackupInternal, {
+          slug: skill.slug,
+          ownerHandles,
+        })
+      }
+    }
+
     return { ok: true as const }
   },
 })
@@ -1587,20 +1783,3 @@ function clampInt(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, rounded))
 }
 
-async function findCanonicalSkillForFingerprint(
-  ctx: { db: MutationCtx['db'] },
-  fingerprint: string,
-) {
-  const matches = await ctx.db
-    .query('skillVersionFingerprints')
-    .withIndex('by_fingerprint', (q) => q.eq('fingerprint', fingerprint))
-    .take(25)
-
-  for (const entry of matches) {
-    const skill = await ctx.db.get(entry.skillId)
-    if (!skill || skill.softDeletedAt) continue
-    return skill
-  }
-
-  return null
-}

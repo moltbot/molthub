@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { internalMutation, mutation, query } from './_generated/server'
 import { requireUser } from './lib/access'
+import { isSkillPublic } from './lib/moderation'
 import { toPublicSkill } from './lib/public'
 import { insertStatEvent } from './skillStatEvents'
 
@@ -58,6 +59,7 @@ export const listByUser = query({
     const skills: NonNullable<ReturnType<typeof toPublicSkill>>[] = []
     for (const star of stars) {
       const skill = await ctx.db.get(star.skillId)
+      if (!skill || !isSkillPublic(skill)) continue
       const publicSkill = toPublicSkill(skill)
       if (!publicSkill) continue
       skills.push(publicSkill)

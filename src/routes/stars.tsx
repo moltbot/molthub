@@ -1,7 +1,12 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
+import { PageShell } from '../components/PageShell'
+import { SectionHeader } from '../components/SectionHeader'
+import { ResourceCard } from '../components/ResourceCard'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
 import type { PublicSkill } from '../lib/publicUser'
 
 export const Route = createFileRoute('/stars')({
@@ -19,32 +24,37 @@ function Stars() {
 
   if (!me) {
     return (
-      <main className="section">
-        <div className="card">Sign in to see your highlights.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">
+            Sign in to see your highlights.
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   return (
-    <main className="section">
-      <h1 className="section-title">Your highlights</h1>
-      <p className="section-subtitle">Skills you’ve starred for quick access.</p>
-      <div className="grid">
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <SectionHeader title="Your highlights" description="Skills you’ve starred for quick access." />
         {skills.length === 0 ? (
-          <div className="card">No stars yet.</div>
+          <Card className="p-6 text-sm text-muted-foreground">No stars yet.</Card>
         ) : (
-          skills.map((skill) => {
-            const owner = encodeURIComponent(String(skill.ownerUserId))
-            return (
-              <div key={skill._id} className="card skill-card">
-                <Link to="/$owner/$slug" params={{ owner, slug: skill.slug }}>
-                  <h3 className="skill-card-title">{skill.displayName}</h3>
-                </Link>
-                <div className="skill-card-footer skill-card-footer-inline">
-                  <span className="stat">⭐ {skill.stats.stars}</span>
-                  <button
-                    className="star-toggle is-active"
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {skills.map((skill) => (
+              <div key={skill._id} className="relative">
+                <ResourceCard
+                  type="skill"
+                  resource={skill}
+                  summaryFallback="No summary provided."
+                  meta={<span>⭐ {skill.stats.stars} stars</span>}
+                />
+                <div className="absolute right-4 top-4">
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     onClick={async () => {
                       try {
                         await toggleStar({ skillId: skill._id })
@@ -55,14 +65,14 @@ function Stars() {
                     }}
                     aria-label={`Unstar ${skill.displayName}`}
                   >
-                    <span aria-hidden="true">★</span>
-                  </button>
+                    Unstar
+                  </Button>
                 </div>
               </div>
-            )
-          })
+            ))}
+          </div>
         )}
-      </div>
+      </PageShell>
     </main>
   )
 }

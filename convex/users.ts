@@ -2,7 +2,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalQuery, mutation, query } from './_generated/server'
-import { assertAdmin, requireUser } from './lib/access'
+import { assertAdmin, assertModerator, requireUser } from './lib/access'
 import { toPublicUser } from './lib/public'
 
 const DEFAULT_ROLE = 'user'
@@ -18,11 +18,31 @@ export const getByIdInternal = internalQuery({
   handler: async (ctx, args) => ctx.db.get(args.userId),
 })
 
+export const getByHandleInternal = internalQuery({
+  args: { handle: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query('users')
+      .withIndex('handle', (q) => q.eq('handle', args.handle))
+      .unique()
+  },
+})
+
+const AUTH_BYPASS = process.env.AUTH_BYPASS === 'true'
+
 export const me = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
-    if (!userId) return null
+    if (!userId) {
+      if (!AUTH_BYPASS) return null
+      const user = await ctx.db
+        .query('users')
+        .withIndex('handle', (q) => q.eq('handle', 'local'))
+        .unique()
+      if (!user || user.deletedAt) return null
+      return user
+    }
     const user = await ctx.db.get(userId)
     if (!user || user.deletedAt) return null
     return user
@@ -98,6 +118,20 @@ export const getByHandle = query({
       .withIndex('handle', (q) => q.eq('handle', args.handle))
       .unique()
     return toPublicUser(user)
+  },
+})
+
+export const lookupByHandle = query({
+  args: { handle: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireUser(ctx)
+    assertModerator(user)
+    const handle = args.handle.trim()
+    if (!handle) return null
+    return ctx.db
+      .query('users')
+      .withIndex('handle', (q) => q.eq('handle', handle))
+      .unique()
   },
 })
 

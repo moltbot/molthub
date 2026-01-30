@@ -47,8 +47,8 @@ async function ensureWasm() {
 }
 
 function buildFooter(slug: string, owner: string | null) {
-  if (owner) return `@${owner}/${slug}`
-  return `souls/${slug}`
+  if (owner) return `souls/${owner}/${slug}`
+  return `souls/unknown/${slug}`
 }
 
 export default defineEventHandler(async (event) => {
@@ -70,13 +70,14 @@ export default defineEventHandler(async (event) => {
     : null
 
   const owner = ownerFromQuery || meta?.owner || ''
+  const ownerId = meta?.ownerId || ''
   const version = versionFromQuery || meta?.version || ''
   const title = titleFromQuery || meta?.displayName || slug
   const description = descriptionFromQuery || meta?.summary || ''
 
   const ownerLabel = owner ? `@${owner}` : 'SoulHub'
   const versionLabel = version ? `v${version}` : 'latest'
-  const footer = buildFooter(slug, owner || null)
+  const footer = buildFooter(slug, owner || ownerId || null)
 
   const cacheKey = version ? 'public, max-age=31536000, immutable' : 'public, max-age=3600'
   setHeader(event, 'Cache-Control', cacheKey)

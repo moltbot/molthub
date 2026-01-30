@@ -3,6 +3,7 @@ import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import { assertModerator, requireUser } from './lib/access'
 import { type PublicUser, toPublicUser } from './lib/public'
+import { upsertResourceForSkill } from './lib/resource'
 
 export const listBySkill = query({
   args: { skillId: v.id('skills'), limit: v.optional(v.number()) },
@@ -43,9 +44,19 @@ export const add = mutation({
       deletedBy: undefined,
     })
 
+    const now = Date.now()
+    const nextStats = { ...skill.stats, comments: skill.stats.comments + 1 }
     await ctx.db.patch(skill._id, {
-      stats: { ...skill.stats, comments: skill.stats.comments + 1 },
-      updatedAt: Date.now(),
+      stats: nextStats,
+      updatedAt: now,
+    })
+    await upsertResourceForSkill(ctx, skill, {
+      stats: nextStats,
+      statsDownloads: skill.statsDownloads,
+      statsStars: skill.statsStars,
+      statsInstallsCurrent: skill.statsInstallsCurrent,
+      statsInstallsAllTime: skill.statsInstallsAllTime,
+      updatedAt: now,
     })
   },
 })
@@ -70,9 +81,19 @@ export const remove = mutation({
 
     const skill = await ctx.db.get(comment.skillId)
     if (skill) {
+      const now = Date.now()
+      const nextStats = { ...skill.stats, comments: Math.max(0, skill.stats.comments - 1) }
       await ctx.db.patch(skill._id, {
-        stats: { ...skill.stats, comments: Math.max(0, skill.stats.comments - 1) },
-        updatedAt: Date.now(),
+        stats: nextStats,
+        updatedAt: now,
+      })
+      await upsertResourceForSkill(ctx, skill, {
+        stats: nextStats,
+        statsDownloads: skill.statsDownloads,
+        statsStars: skill.statsStars,
+        statsInstallsCurrent: skill.statsInstallsCurrent,
+        statsInstallsAllTime: skill.statsInstallsAllTime,
+        updatedAt: now,
       })
     }
 

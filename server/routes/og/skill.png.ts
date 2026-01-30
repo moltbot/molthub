@@ -35,7 +35,7 @@ function getApiBase(eventHost: string | null) {
   if (site) return site
 
   if (eventHost) return `https://${eventHost}`
-  return 'https://clawhub.ai'
+  return 'https://molthub.com'
 }
 
 async function ensureWasm() {
@@ -66,9 +66,9 @@ export default defineEventHandler(async (event) => {
   const title = titleFromQuery || meta?.displayName || slug
   const description = descriptionFromQuery || meta?.summary || ''
 
-  const ownerLabel = owner ? `@${owner}` : 'clawhub'
+  const ownerLabel = owner ? `@${owner}` : 'molthub'
   const versionLabel = version ? `v${version}` : 'latest'
-  const footer = owner ? `clawhub.ai/${owner}/${slug}` : `clawhub.ai/skills/${slug}`
+  const footer = `molthub.com/skills/${owner || 'unknown'}/${slug}`
 
   const cacheKey = version ? 'public, max-age=31536000, immutable' : 'public, max-age=3600'
   setHeader(event, 'Cache-Control', cacheKey)

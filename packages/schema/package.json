@@ -1,5 +1,5 @@
 {
-  "name": "clawhub-schema",
+  "name": "molthub-schema",
   "version": "0.0.2",
   "private": true,
   "type": "module",

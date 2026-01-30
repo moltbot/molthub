@@ -7,6 +7,7 @@ import type { ActionCtx } from './_generated/server'
 import { internalAction } from './_generated/server'
 import {
   backupSkillToGitHub,
+  deleteSkillFromGitHub,
   fetchGitHubSkillMeta,
   getGitHubBackupContext,
   isGitHubBackupConfigured,
@@ -75,6 +76,23 @@ export const backupSkillForPublishInternal = internalAction({
     }
     await backupSkillToGitHub(ctx, args)
     return { skipped: false as const }
+  },
+})
+
+export const deleteSkillBackupInternal = internalAction({
+  args: {
+    slug: v.string(),
+    ownerHandles: v.array(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    if (!isGitHubBackupConfigured()) {
+      return { skipped: true as const, deleted: false as const }
+    }
+    const result = await deleteSkillFromGitHub({
+      slug: args.slug,
+      ownerHandles: args.ownerHandles,
+    })
+    return { skipped: false as const, deleted: result.deleted }
   },
 })
 

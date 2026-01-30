@@ -18,6 +18,7 @@ import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
 import { internalAction, internalMutation, internalQuery } from './_generated/server'
+import { upsertResourceForSkill } from './lib/resource'
 import { applySkillStatDeltas, bumpDailySkillStats } from './lib/skillStats'
 
 /**
@@ -244,6 +245,14 @@ export const processSkillStatEventsInternal = internalMutation({
           ...patch,
           updatedAt: now,
         })
+        await upsertResourceForSkill(ctx, skill, {
+          stats: patch.stats,
+          statsDownloads: patch.statsDownloads,
+          statsStars: patch.statsStars,
+          statsInstallsCurrent: patch.statsInstallsCurrent,
+          statsInstallsAllTime: patch.statsInstallsAllTime,
+          updatedAt: now,
+        })
       }
 
       // Update daily stats for trending/leaderboards
@@ -377,6 +386,14 @@ export const applyAggregatedStatsAndUpdateCursor = internalMutation({
         })
         await ctx.db.patch(skill._id, {
           ...patch,
+          updatedAt: now,
+        })
+        await upsertResourceForSkill(ctx, skill, {
+          stats: patch.stats,
+          statsDownloads: patch.statsDownloads,
+          statsStars: patch.statsStars,
+          statsInstallsCurrent: patch.statsInstallsCurrent,
+          statsInstallsAllTime: patch.statsInstallsAllTime,
           updatedAt: now,
         })
       }

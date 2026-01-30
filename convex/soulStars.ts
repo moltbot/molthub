@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { requireUser } from './lib/access'
 import { toPublicSoul } from './lib/public'
+import { upsertResourceForSoul } from './lib/resource'
 
 export const isStarred = query({
   args: { soulId: v.id('souls') },
@@ -29,9 +30,22 @@ export const toggle = mutation({
 
     if (existing) {
       await ctx.db.delete(existing._id)
+      const now = Date.now()
+      const nextStats = { ...soul.stats, stars: Math.max(0, soul.stats.stars - 1) }
       await ctx.db.patch(soul._id, {
-        stats: { ...soul.stats, stars: Math.max(0, soul.stats.stars - 1) },
-        updatedAt: Date.now(),
+        stats: nextStats,
+        updatedAt: now,
+      })
+      await upsertResourceForSoul(ctx, soul, {
+        statsDownloads: nextStats.downloads,
+        statsStars: nextStats.stars,
+        stats: {
+          downloads: nextStats.downloads,
+          stars: nextStats.stars,
+          versions: nextStats.versions,
+          comments: nextStats.comments,
+        },
+        updatedAt: now,
       })
       return { starred: false }
     }
@@ -41,9 +55,22 @@ export const toggle = mutation({
       userId,
       createdAt: Date.now(),
     })
+    const now = Date.now()
+    const nextStats = { ...soul.stats, stars: soul.stats.stars + 1 }
     await ctx.db.patch(soul._id, {
-      stats: { ...soul.stats, stars: soul.stats.stars + 1 },
-      updatedAt: Date.now(),
+      stats: nextStats,
+      updatedAt: now,
+    })
+    await upsertResourceForSoul(ctx, soul, {
+      statsDownloads: nextStats.downloads,
+      statsStars: nextStats.stars,
+      stats: {
+        downloads: nextStats.downloads,
+        stars: nextStats.stars,
+        versions: nextStats.versions,
+        comments: nextStats.comments,
+      },
+      updatedAt: now,
     })
     return { starred: true }
   },

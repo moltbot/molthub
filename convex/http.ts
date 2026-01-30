@@ -1,4 +1,4 @@
-import { ApiRoutes, LegacyApiRoutes } from 'clawhub-schema'
+import { ApiRoutes, LegacyApiRoutes } from 'molthub-schema'
 import { httpRouter } from 'convex/server'
 import { auth } from './auth'
 import { downloadZip } from './downloads'

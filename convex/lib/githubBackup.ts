@@ -233,6 +233,82 @@ export async function backupSkillToGitHub(
   )
 }
 
+export async function deleteSkillFromGitHub(
+  params: { slug: string; ownerHandles: string[] },
+  context?: GitHubBackupContext,
+) {
+  if (!isGitHubBackupConfigured()) return { deleted: false as const }
+
+  const resolved = context ?? (await getGitHubBackupContext())
+  const ref = await githubGet<GitRef>(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/ref/heads/${resolved.branch}`,
+  )
+  const baseCommitSha = ref.object.sha
+  const baseCommit = await githubGet<GitCommit>(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/commits/${baseCommitSha}`,
+  )
+  const baseTreeSha = baseCommit.tree.sha
+  const existingTree = await githubGet<GitTree>(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/trees/${baseTreeSha}?recursive=1`,
+  )
+
+  const ownerHandles = Array.from(
+    new Set(params.ownerHandles.map((handle) => handle.trim()).filter(Boolean)),
+  )
+  if (ownerHandles.length === 0) return { deleted: false as const }
+
+  const prefixes = ownerHandles.map(
+    (handle) => `${buildSkillRoot(resolved.root, handle, params.slug)}/`,
+  )
+
+  const entriesToDelete = (existingTree.tree ?? []).filter(
+    (entry) => entry.type === 'blob' && prefixes.some((prefix) => entry.path?.startsWith(prefix)),
+  )
+
+  if (entriesToDelete.length === 0) {
+    return { deleted: false as const }
+  }
+
+  const treeEntries = entriesToDelete.map((entry) => ({
+    path: entry.path ?? '',
+    mode: '100644' as const,
+    type: 'blob' as const,
+    sha: null,
+  }))
+
+  const newTree = await githubPost<{ sha: string }>(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/trees`,
+    {
+      base_tree: baseTreeSha,
+      tree: treeEntries,
+    },
+  )
+
+  const commit = await githubPost<GitCommit>(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/commits`,
+    {
+      message: `skill: delete ${params.slug}`,
+      tree: newTree.sha,
+      parents: [baseCommitSha],
+    },
+  )
+
+  await githubPatch(
+    resolved.token,
+    `/repos/${resolved.repoOwner}/${resolved.repoName}/git/refs/heads/${resolved.branch}`,
+    {
+      sha: commit.sha,
+    },
+  )
+
+  return { deleted: true as const }
+}
+
 function buildMetaFile(
   params: BackupParams,
   existing: MetaFile | null,

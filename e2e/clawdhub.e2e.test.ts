@@ -9,7 +9,7 @@ import {
   ApiV1SearchResponseSchema,
   ApiV1WhoamiResponseSchema,
   parseArk,
-} from 'clawhub-schema'
+} from 'molthub-schema'
 import { unzipSync } from 'fflate'
 import { Agent, setGlobalDispatcher } from 'undici'
 import { describe, expect, it } from 'vitest'

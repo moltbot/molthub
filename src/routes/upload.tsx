@@ -3,6 +3,13 @@ import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import semver from 'semver'
 import { api } from '../../convex/_generated/api'
+import { PageShell } from '../components/PageShell'
+import { SectionHeader } from '../components/SectionHeader'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import { Textarea } from '../components/ui/textarea'
 import { getSiteMode } from '../lib/site'
 import { expandDroppedItems, expandFiles } from '../lib/uploadFiles'
 import { useAuthStatus } from '../lib/useAuthStatus'
@@ -13,7 +20,7 @@ import {
   isTextFile,
   readText,
   uploadFile,
-} from './upload/utils'
+} from './upload/-utils'
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -242,8 +249,12 @@ export function Upload() {
 
   if (!isAuthenticated) {
     return (
-      <main className="section">
-        <div className="card">Sign in to upload a {contentLabel}.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">
+            Sign in to upload a {contentLabel}.
+          </Card>
+        </PageShell>
       </main>
     )
   }
@@ -311,8 +322,8 @@ export function Upload() {
       if (result) {
         const ownerParam = me?.handle ?? (me?._id ? String(me._id) : 'unknown')
         void navigate({
-          to: isSoulMode ? '/souls/$slug' : '/$owner/$slug',
-          params: isSoulMode ? { slug: trimmedSlug } : { owner: ownerParam, slug: trimmedSlug },
+          to: isSoulMode ? '/souls/$owner/$slug' : '/skills/$owner/$slug',
+          params: { owner: ownerParam, slug: trimmedSlug },
         })
       }
     } catch (error) {
@@ -322,178 +333,189 @@ export function Upload() {
   }
 
   return (
-    <main className="section">
-      <h1 className="section-title">Publish a {contentLabel}</h1>
-      <p className="section-subtitle">
-        Drop a folder with {requiredFileLabel} and text files. We will handle the rest.
-      </p>
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <SectionHeader
+          title={`Publish a ${contentLabel}`}
+          description={`Drop a folder with ${requiredFileLabel} and text files. We'll handle the rest.`}
+        />
 
-      <form onSubmit={handleSubmit} className="upload-grid">
-        <div className="card">
-          <label className="form-label" htmlFor="slug">
-            Slug
-          </label>
-          <input
-            className="form-input"
-            id="slug"
-            value={slug}
-            onChange={(event) => setSlug(event.target.value)}
-            placeholder={`${contentLabel}-name`}
-          />
-
-          <label className="form-label" htmlFor="displayName">
-            Display name
-          </label>
-          <input
-            className="form-input"
-            id="displayName"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder={`My ${contentLabel}`}
-          />
-
-          <label className="form-label" htmlFor="version">
-            Version
-          </label>
-          <input
-            className="form-input"
-            id="version"
-            value={version}
-            onChange={(event) => setVersion(event.target.value)}
-            placeholder="1.0.0"
-          />
-
-          <label className="form-label" htmlFor="tags">
-            Tags
-          </label>
-          <input
-            className="form-input"
-            id="tags"
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
-            placeholder="latest, stable"
-          />
-        </div>
-
-        <div className="card">
-          <label
-            className={`upload-dropzone${isDragging ? ' is-dragging' : ''}`}
-            onDragOver={(event) => {
-              event.preventDefault()
-              setIsDragging(true)
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault()
-              setIsDragging(false)
-              const items = event.dataTransfer.items
-              void (async () => {
-                const dropped = items?.length
-                  ? await expandDroppedItems(items)
-                  : Array.from(event.dataTransfer.files)
-                const next = await expandFiles(dropped)
-                setFiles(next)
-              })()
-            }}
-          >
-            <input
-              ref={fileInputRef}
-              className="upload-input"
-              id="upload-files"
-              data-testid="upload-input"
-              type="file"
-              multiple
-              // @ts-expect-error - non-standard attribute to allow folder selection
-              webkitdirectory=""
-              directory=""
-              onChange={(event) => {
-                const picked = Array.from(event.target.files ?? [])
-                void expandFiles(picked).then((next) => setFiles(next))
-              }}
-            />
-            <div className="upload-dropzone-copy">
-              <strong>Drop a folder</strong>
-              <span>
-                {files.length} files · {sizeLabel}
-              </span>
-              <button className="btn" type="button" onClick={() => fileInputRef.current?.click()}>
-                Choose folder
-              </button>
-            </div>
-          </label>
-
-          <div className="upload-file-list">
-            {files.length === 0 ? (
-              <div className="stat">No files selected.</div>
-            ) : (
-              normalizedPaths.map((path) => (
-                <div key={path} className="upload-file-row">
-                  <span>{path}</span>
+        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-6">
+            <Card className="space-y-4 p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="slug">
+                    Slug
+                  </label>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(event) => setSlug(event.target.value)}
+                    placeholder={`${contentLabel}-name`}
+                  />
                 </div>
-              ))
-            )}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="displayName">
+                    Display name
+                  </label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder={`My ${contentLabel}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="version">
+                    Version
+                  </label>
+                  <Input
+                    id="version"
+                    value={version}
+                    onChange={(event) => setVersion(event.target.value)}
+                    placeholder="1.0.0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="tags">
+                    Tags
+                  </label>
+                  <Input
+                    id="tags"
+                    value={tags}
+                    onChange={(event) => setTags(event.target.value)}
+                    placeholder="latest, stable"
+                  />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="space-y-4 p-6">
+              <div className="text-sm font-semibold">Files</div>
+              <label
+                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-border p-6 text-center text-sm text-muted-foreground transition ${
+                  isDragging ? 'bg-muted/70' : 'bg-card'
+                }`}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  setIsDragging(false)
+                  const items = event.dataTransfer.items
+                  void (async () => {
+                    const dropped = items?.length
+                      ? await expandDroppedItems(items)
+                      : Array.from(event.dataTransfer.files)
+                    const next = await expandFiles(dropped)
+                    setFiles(next)
+                  })()
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  className="hidden"
+                  id="upload-files"
+                  data-testid="upload-input"
+                  type="file"
+                  multiple
+                  // @ts-expect-error - non-standard attribute to allow folder selection
+                  webkitdirectory=""
+                  directory=""
+                  onChange={(event) => {
+                    const picked = Array.from(event.target.files ?? [])
+                    void expandFiles(picked).then((next) => setFiles(next))
+                  }}
+                />
+                <div className="text-sm font-medium">Drop a folder</div>
+                <div className="text-xs text-muted-foreground">
+                  {files.length} files · {sizeLabel}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Choose folder
+                </Button>
+              </label>
+
+              <div className="space-y-2 text-xs text-muted-foreground">
+                {files.length === 0 ? (
+                  <div>No files selected.</div>
+                ) : (
+                  normalizedPaths.map((path) => (
+                    <div key={path} className="rounded-[var(--radius)] border border-border px-3 py-2">
+                      {path}
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+
+            <Card className="space-y-4 p-6">
+              <div className="text-sm font-semibold">Changelog</div>
+              <Textarea
+                id="changelog"
+                rows={6}
+                value={changelog}
+                onChange={(event) => {
+                  changelogTouchedRef.current = true
+                  setChangelogSource('user')
+                  setChangelog(event.target.value)
+                }}
+                placeholder={`Describe what changed in this ${contentLabel}...`}
+              />
+              <div className="text-xs text-muted-foreground">
+                {changelogStatus === 'loading' ? 'Generating changelog…' : null}
+                {changelogStatus === 'error' ? 'Could not auto-generate changelog.' : null}
+                {changelogSource === 'auto' && changelog ?
+                  'Auto-generated changelog (edit as needed).' : null}
+              </div>
+            </Card>
           </div>
-        </div>
 
-        <div className="card" ref={validationRef}>
-          <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-            Validation
-          </h2>
-          {validation.issues.length === 0 ? (
-            <div className="stat">All checks passed.</div>
-          ) : (
-            <ul className="validation-list">
-              {validation.issues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
-          )}
-        </div>
+          <div className="space-y-6">
+            <Card className="space-y-4 p-6" ref={validationRef}>
+              <div className="text-sm font-semibold">Validation</div>
+              {validation.issues.length === 0 ? (
+                <div className="text-xs text-muted-foreground">All checks passed.</div>
+              ) : (
+                <ul className="list-disc space-y-2 pl-4 text-xs text-muted-foreground">
+                  {validation.issues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {hasRequiredFile ? <Badge variant="secondary">{requiredFileLabel}</Badge> : null}
+                {files.length ? (
+                  <Badge variant="secondary">{files.length} files</Badge>
+                ) : null}
+                {totalBytes ? <Badge variant="secondary">{sizeLabel}</Badge> : null}
+              </div>
+            </Card>
 
-        <div className="card">
-          <label className="form-label" htmlFor="changelog">
-            Changelog
-          </label>
-          <textarea
-            className="form-input"
-            id="changelog"
-            rows={6}
-            value={changelog}
-            onChange={(event) => {
-              changelogTouchedRef.current = true
-              setChangelogSource('user')
-              setChangelog(event.target.value)
-            }}
-            placeholder={`Describe what changed in this ${contentLabel}...`}
-          />
-          {changelogStatus === 'loading' ? <div className="stat">Generating changelog…</div> : null}
-          {changelogStatus === 'error' ? (
-            <div className="stat">Could not auto-generate changelog.</div>
-          ) : null}
-          {changelogSource === 'auto' && changelog ? (
-            <div className="stat">Auto-generated changelog (edit as needed).</div>
-          ) : null}
-        </div>
-
-        <div className="card">
-          {error ? (
-            <div className="error" role="alert">
-              {error}
-            </div>
-          ) : null}
-          {status ? <div className="stat">{status}</div> : null}
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={!validation.ready || isSubmitting}
-          >
-            Publish {contentLabel}
-          </button>
-          {hasAttempted && !validation.ready ? (
-            <div className="stat">Fix validation issues to continue.</div>
-          ) : null}
-        </div>
-      </form>
+            <Card className="space-y-3 p-6">
+              {error ? (
+                <div className="rounded-[var(--radius)] border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {error}
+                </div>
+              ) : null}
+              {status ? <div className="text-xs text-muted-foreground">{status}</div> : null}
+              <Button type="submit" disabled={!validation.ready || isSubmitting}>
+                Publish {contentLabel}
+              </Button>
+              {hasAttempted && !validation.ready ? (
+                <div className="text-xs text-muted-foreground">Fix validation issues to continue.</div>
+              ) : null}
+            </Card>
+          </div>
+        </form>
+      </PageShell>
     </main>
   )
 }

@@ -2,6 +2,7 @@ export type SoulOgMeta = {
   displayName: string | null
   summary: string | null
   owner: string | null
+  ownerId: string | null
   version: string | null
 }
 
@@ -12,13 +13,14 @@ export async function fetchSoulOgMeta(slug: string, apiBase: string): Promise<So
     if (!response.ok) return null
     const payload = (await response.json()) as {
       soul?: { displayName?: string; summary?: string | null } | null
-      owner?: { handle?: string | null } | null
+      owner?: { handle?: string | null; userId?: string | null } | null
       latestVersion?: { version?: string | null } | null
     }
     return {
       displayName: payload.soul?.displayName ?? null,
       summary: payload.soul?.summary ?? null,
       owner: payload.owner?.handle ?? null,
+      ownerId: payload.owner?.userId ?? null,
       version: payload.latestVersion?.version ?? null,
     }
   } catch {

@@ -1,50 +1,50 @@
 import type { Doc, Id } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
 
-type BadgeKind = Doc<'skillBadges'>['kind']
+type BadgeKind = Doc<'resourceBadges'>['kind']
 
-export type SkillBadgeMap = Partial<Record<BadgeKind, { byUserId: Id<'users'>; at: number }>>
+export type ResourceBadgeMap = Partial<Record<BadgeKind, { byUserId: Id<'users'>; at: number }>>
 
-export type SkillBadgeSource = { badges?: SkillBadgeMap | null }
+export type ResourceBadgeSource = { badges?: ResourceBadgeMap | null }
 
 type BadgeCtx = Pick<QueryCtx, 'db'>
 
-export function isSkillHighlighted(skill: SkillBadgeSource) {
-  return Boolean(skill.badges?.highlighted)
+export function isResourceHighlighted(resource: ResourceBadgeSource) {
+  return Boolean(resource.badges?.highlighted)
 }
 
-export function isSkillOfficial(skill: SkillBadgeSource) {
-  return Boolean(skill.badges?.official)
+export function isResourceOfficial(resource: ResourceBadgeSource) {
+  return Boolean(resource.badges?.official)
 }
 
-export function isSkillDeprecated(skill: SkillBadgeSource) {
-  return Boolean(skill.badges?.deprecated)
+export function isResourceDeprecated(resource: ResourceBadgeSource) {
+  return Boolean(resource.badges?.deprecated)
 }
 
-export function buildBadgeMap(records: Doc<'skillBadges'>[]): SkillBadgeMap {
-  return records.reduce<SkillBadgeMap>((acc, record) => {
+export function buildBadgeMap(records: Doc<'resourceBadges'>[]): ResourceBadgeMap {
+  return records.reduce<ResourceBadgeMap>((acc, record) => {
     acc[record.kind] = { byUserId: record.byUserId, at: record.at }
     return acc
   }, {})
 }
 
-export async function getSkillBadgeMap(
+export async function getResourceBadgeMap(
   ctx: BadgeCtx,
-  skillId: Id<'skills'>,
-): Promise<SkillBadgeMap> {
+  resourceId: Id<'resources'>,
+): Promise<ResourceBadgeMap> {
   const records = await ctx.db
-    .query('skillBadges')
-    .withIndex('by_skill', (q) => q.eq('skillId', skillId))
+    .query('resourceBadges')
+    .withIndex('by_resource', (q) => q.eq('resourceId', resourceId))
     .collect()
   return buildBadgeMap(records)
 }
 
-export async function getSkillBadgeMaps(
+export async function getResourceBadgeMaps(
   ctx: BadgeCtx,
-  skillIds: Array<Id<'skills'>>,
-): Promise<Map<Id<'skills'>, SkillBadgeMap>> {
+  resourceIds: Array<Id<'resources'>>,
+): Promise<Map<Id<'resources'>, ResourceBadgeMap>> {
   const entries = await Promise.all(
-    skillIds.map(async (skillId) => [skillId, await getSkillBadgeMap(ctx, skillId)] as const),
+    resourceIds.map(async (resourceId) => [resourceId, await getResourceBadgeMap(ctx, resourceId)] as const),
   )
   return new Map(entries)
 }

@@ -1,9 +1,12 @@
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
+import type { QueryCtx } from './_generated/server'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { assertModerator, requireUser, requireUserFromAction } from './lib/access'
+import { getResourceBadgeMap, getResourceBadgeMaps } from './lib/badges'
 import { toPublicSoul, toPublicUser } from './lib/public'
+import { upsertResourceForSoul } from './lib/resource'
 import { getFrontmatterValue, hashSkillFiles } from './lib/skills'
 import { generateSoulChangelogPreview } from './lib/soulChangelog'
 import { fetchText, type PublishResult, publishSoulVersionForUser } from './lib/soulPublish'
@@ -17,6 +20,65 @@ type FileTextResult = { path: string; text: string; size: number; sha256: string
 const MAX_DIFF_FILE_BYTES = 200 * 1024
 const MAX_LIST_LIMIT = 50
 
+function mergeResourceIntoSoul(soul: Doc<'souls'>, resource: Doc<'resources'>) {
+  return {
+    ...soul,
+    slug: resource.slug,
+    displayName: resource.displayName,
+    summary: resource.summary,
+    ownerUserId: resource.ownerUserId,
+    softDeletedAt: resource.softDeletedAt,
+    stats: resource.stats,
+    createdAt: resource.createdAt,
+    updatedAt: resource.updatedAt,
+  }
+}
+
+async function buildPublicSoulEntriesFromResources(
+  ctx: QueryCtx,
+  resources: Doc<'resources'>[],
+) {
+  const validEntries = await Promise.all(
+    resources.map(async (resource) => {
+      const soul = await ctx.db
+        .query('souls')
+        .withIndex('by_resource', (q) => q.eq('resourceId', resource._id))
+        .unique()
+      if (!soul || soul.softDeletedAt || resource.softDeletedAt) return null
+      return { soul, resource }
+    }),
+  )
+
+  const entries = validEntries.filter(
+    (entry): entry is { soul: Doc<'souls'>; resource: Doc<'resources'> } => Boolean(entry),
+  )
+
+  const badgeMapByResourceId = await getResourceBadgeMaps(
+    ctx,
+    entries.map((entry) => entry.resource._id),
+  )
+
+  const hydrated = await Promise.all(
+    entries.map(async (entry) => {
+      const latestVersion = entry.soul.latestVersionId
+        ? await ctx.db.get(entry.soul.latestVersionId)
+        : null
+      const badges = badgeMapByResourceId.get(entry.resource._id) ?? {}
+      const publicSoul = toPublicSoul({
+        ...mergeResourceIntoSoul(entry.soul, entry.resource),
+        badges,
+      })
+      if (!publicSoul) return null
+      return { soul: publicSoul, latestVersion }
+    }),
+  )
+
+  return hydrated.filter(
+    (entry): entry is { soul: NonNullable<ReturnType<typeof toPublicSoul>>; latestVersion: Doc<'soulVersions'> | null } =>
+      Boolean(entry),
+  )
+}
+
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
@@ -27,12 +89,18 @@ export const getBySlug = query({
       .take(2)
     const soul = matches[0] ?? null
     if (!soul || soul.softDeletedAt) return null
-    const latestVersion = soul.latestVersionId ? await ctx.db.get(soul.latestVersionId) : null
-    const owner = toPublicUser(await ctx.db.get(soul.ownerUserId))
-    const publicSoul = toPublicSoul(soul)
+    const [latestVersion, owner, resource, badges] = await Promise.all([
+      soul.latestVersionId ? ctx.db.get(soul.latestVersionId) : null,
+      ctx.db.get(soul.ownerUserId),
+      soul.resourceId ? ctx.db.get(soul.resourceId) : null,
+      soul.resourceId ? getResourceBadgeMap(ctx, soul.resourceId) : Promise.resolve({}),
+    ])
+    const publicSoul = toPublicSoul(
+      resource ? { ...mergeResourceIntoSoul(soul, resource), badges } : { ...soul, badges },
+    )
     if (!publicSoul) return null
 
-    return { soul: publicSoul, latestVersion, owner }
+    return { soul: publicSoul, latestVersion, owner: toPublicUser(owner) }
   },
 })
 
@@ -57,26 +125,23 @@ export const list = query({
     const limit = args.limit ?? 24
     const ownerUserId = args.ownerUserId
     if (ownerUserId) {
-      const entries = await ctx.db
-        .query('souls')
-        .withIndex('by_owner', (q) => q.eq('ownerUserId', ownerUserId))
+      const resources = await ctx.db
+        .query('resources')
+        .withIndex('by_type_owner_updated', (q) =>
+          q.eq('type', 'soul').eq('ownerUserId', ownerUserId),
+        )
         .order('desc')
-        .take(limit * 5)
-      return entries
-        .filter((soul) => !soul.softDeletedAt)
-        .slice(0, limit)
-        .map((soul) => toPublicSoul(soul))
-        .filter((soul): soul is NonNullable<typeof soul> => Boolean(soul))
+        .take(limit * 3)
+      const entries = await buildPublicSoulEntriesFromResources(ctx, resources)
+      return entries.map((entry) => entry.soul).slice(0, limit)
     }
-    const entries = await ctx.db
-      .query('souls')
+    const resources = await ctx.db
+      .query('resources')
+      .withIndex('by_type_updated', (q) => q.eq('type', 'soul'))
       .order('desc')
-      .take(limit * 5)
-    return entries
-      .filter((soul) => !soul.softDeletedAt)
-      .slice(0, limit)
-      .map((soul) => toPublicSoul(soul))
-      .filter((soul): soul is NonNullable<typeof soul> => Boolean(soul))
+      .take(limit * 3)
+    const entries = await buildPublicSoulEntriesFromResources(ctx, resources)
+    return entries.map((entry) => entry.soul).slice(0, limit)
   },
 })
 
@@ -88,23 +153,14 @@ export const listPublicPage = query({
   handler: async (ctx, args) => {
     const limit = clampInt(args.limit ?? 24, 1, MAX_LIST_LIMIT)
     const { page, isDone, continueCursor } = await ctx.db
-      .query('souls')
-      .withIndex('by_updated', (q) => q)
+      .query('resources')
+      .withIndex('by_type_active_updated', (q) =>
+        q.eq('type', 'soul').eq('softDeletedAt', undefined),
+      )
       .order('desc')
       .paginate({ cursor: args.cursor ?? null, numItems: limit })
 
-    const items: Array<{
-      soul: NonNullable<ReturnType<typeof toPublicSoul>>
-      latestVersion: Doc<'soulVersions'> | null
-    }> = []
-
-    for (const soul of page) {
-      if (soul.softDeletedAt) continue
-      const latestVersion = soul.latestVersionId ? await ctx.db.get(soul.latestVersionId) : null
-      const publicSoul = toPublicSoul(soul)
-      if (!publicSoul) continue
-      items.push({ soul: publicSoul, latestVersion })
-    }
+    const items = await buildPublicSoulEntriesFromResources(ctx, page)
 
     return { items, nextCursor: isDone ? null : continueCursor }
   },
@@ -334,11 +390,13 @@ export const updateTags = mutation({
     }
 
     const latestEntry = args.tags.find((entry) => entry.tag === 'latest')
+    const now = Date.now()
     await ctx.db.patch(soul._id, {
       tags: nextTags,
       latestVersionId: latestEntry ? latestEntry.versionId : soul.latestVersionId,
-      updatedAt: Date.now(),
+      updatedAt: now,
     })
+    await upsertResourceForSoul(ctx, soul, { updatedAt: now })
 
     if (latestEntry) {
       const embeddings = await ctx.db
@@ -402,7 +460,29 @@ export const insertVersion = internalMutation({
     const now = Date.now()
     if (!soul) {
       const summary = args.summary ?? getFrontmatterValue(args.parsed.frontmatter, 'description')
+      const resourceId = await ctx.db.insert('resources', {
+        type: 'soul',
+        slug: args.slug,
+        displayName: args.displayName,
+        summary: summary ?? undefined,
+        ownerUserId: userId,
+        ownerHandle: user.handle ?? user._id,
+        softDeletedAt: undefined,
+        statsDownloads: 0,
+        statsStars: 0,
+        statsInstallsCurrent: undefined,
+        statsInstallsAllTime: undefined,
+        stats: {
+          downloads: 0,
+          stars: 0,
+          versions: 0,
+          comments: 0,
+        },
+        createdAt: now,
+        updatedAt: now,
+      })
       const soulId = await ctx.db.insert('souls', {
+        resourceId,
         slug: args.slug,
         displayName: args.displayName,
         summary: summary ?? undefined,
@@ -453,14 +533,30 @@ export const insertVersion = internalMutation({
 
     const latestBefore = soul.latestVersionId
 
+    const nextStats = { ...soul.stats, versions: soul.stats.versions + 1 }
+    const nextSummary =
+      args.summary ?? getFrontmatterValue(args.parsed.frontmatter, 'description') ?? soul.summary
     await ctx.db.patch(soul._id, {
       displayName: args.displayName,
-      summary:
-        args.summary ?? getFrontmatterValue(args.parsed.frontmatter, 'description') ?? soul.summary,
+      summary: nextSummary,
       latestVersionId: versionId,
       tags: nextTags,
-      stats: { ...soul.stats, versions: soul.stats.versions + 1 },
+      stats: nextStats,
       softDeletedAt: undefined,
+      updatedAt: now,
+    })
+    await upsertResourceForSoul(ctx, soul, {
+      displayName: args.displayName,
+      summary: nextSummary ?? undefined,
+      softDeletedAt: undefined,
+      statsDownloads: nextStats.downloads,
+      statsStars: nextStats.stars,
+      stats: {
+        downloads: nextStats.downloads,
+        stars: nextStats.stars,
+        versions: nextStats.versions,
+        comments: nextStats.comments,
+      },
       updatedAt: now,
     })
 
@@ -527,6 +623,10 @@ export const setSoulSoftDeletedInternal = internalMutation({
 
     const now = Date.now()
     await ctx.db.patch(soul._id, {
+      softDeletedAt: args.deleted ? now : undefined,
+      updatedAt: now,
+    })
+    await upsertResourceForSoul(ctx, soul, {
       softDeletedAt: args.deleted ? now : undefined,
       updatedAt: now,
     })

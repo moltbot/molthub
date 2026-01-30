@@ -213,7 +213,7 @@ describe('httpApiV1 handlers', () => {
             changelog: 'c',
             files: [],
           },
-          owner: { handle: 'p', displayName: 'Peter', image: null },
+          owner: { handle: 'p', userId: 'users:1', displayName: 'Peter', image: null },
         }
       }
       if ('versionId' in args) return { version: '1.0.0' }

@@ -25,16 +25,63 @@ const users = defineTable({
   .index('phone', ['phone'])
   .index('handle', ['handle'])
 
-const skills = defineTable({
+const resources = defineTable({
+  type: v.union(v.literal('skill'), v.literal('soul'), v.literal('extension')),
   slug: v.string(),
   displayName: v.string(),
   summary: v.optional(v.string()),
   ownerUserId: v.id('users'),
-  canonicalSkillId: v.optional(v.id('skills')),
+  ownerHandle: v.optional(v.string()),
+  softDeletedAt: v.optional(v.number()),
+  statsDownloads: v.optional(v.number()),
+  statsStars: v.optional(v.number()),
+  statsInstallsCurrent: v.optional(v.number()),
+  statsInstallsAllTime: v.optional(v.number()),
+  stats: v.object({
+    downloads: v.number(),
+    installsCurrent: v.optional(v.number()),
+    installsAllTime: v.optional(v.number()),
+    stars: v.number(),
+    versions: v.number(),
+    comments: v.number(),
+  }),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index('by_type_slug', ['type', 'slug'])
+  .index('by_type_owner', ['type', 'ownerUserId'])
+  .index('by_type_owner_updated', ['type', 'ownerUserId', 'updatedAt'])
+  .index('by_type_updated', ['type', 'updatedAt'])
+  .index('by_type_active_updated', ['type', 'softDeletedAt', 'updatedAt'])
+  .index('by_type_stats_downloads', ['type', 'statsDownloads', 'updatedAt'])
+  .index('by_type_stats_stars', ['type', 'statsStars', 'updatedAt'])
+  .index('by_type_stats_installs_current', ['type', 'statsInstallsCurrent', 'updatedAt'])
+  .index('by_type_stats_installs_all_time', ['type', 'statsInstallsAllTime', 'updatedAt'])
+  .index('by_type_active_stats_downloads', ['type', 'softDeletedAt', 'statsDownloads', 'updatedAt'])
+  .index('by_type_active_stats_stars', ['type', 'softDeletedAt', 'statsStars', 'updatedAt'])
+  .index('by_type_active_stats_installs_current', [
+    'type',
+    'softDeletedAt',
+    'statsInstallsCurrent',
+    'updatedAt',
+  ])
+  .index('by_type_active_stats_installs_all_time', [
+    'type',
+    'softDeletedAt',
+    'statsInstallsAllTime',
+    'updatedAt',
+  ])
+
+const skills = defineTable({
+  resourceId: v.optional(v.id('resources')),
+  slug: v.string(),
+  displayName: v.string(),
+  summary: v.optional(v.string()),
+  ownerUserId: v.id('users'),
   forkOf: v.optional(
     v.object({
       skillId: v.id('skills'),
-      kind: v.union(v.literal('fork'), v.literal('duplicate')),
+      kind: v.literal('fork'),
       version: v.optional(v.string()),
       at: v.number(),
     }),
@@ -42,43 +89,10 @@ const skills = defineTable({
   latestVersionId: v.optional(v.id('skillVersions')),
   tags: v.record(v.string(), v.id('skillVersions')),
   softDeletedAt: v.optional(v.number()),
-  badges: v.object({
-    redactionApproved: v.optional(
-      v.object({
-        byUserId: v.id('users'),
-        at: v.number(),
-      }),
-    ),
-    highlighted: v.optional(
-      v.object({
-        byUserId: v.id('users'),
-        at: v.number(),
-      }),
-    ),
-    official: v.optional(
-      v.object({
-        byUserId: v.id('users'),
-        at: v.number(),
-      }),
-    ),
-    deprecated: v.optional(
-      v.object({
-        byUserId: v.id('users'),
-        at: v.number(),
-      }),
-    ),
-  }),
   moderationStatus: v.optional(
     v.union(v.literal('active'), v.literal('hidden'), v.literal('removed')),
   ),
-  moderationNotes: v.optional(v.string()),
-  moderationReason: v.optional(v.string()),
   moderationFlags: v.optional(v.array(v.string())),
-  lastReviewedAt: v.optional(v.number()),
-  hiddenAt: v.optional(v.number()),
-  hiddenBy: v.optional(v.id('users')),
-  reportCount: v.optional(v.number()),
-  lastReportedAt: v.optional(v.number()),
   batch: v.optional(v.string()),
   statsDownloads: v.optional(v.number()),
   statsStars: v.optional(v.number()),
@@ -97,6 +111,7 @@ const skills = defineTable({
 })
   .index('by_slug', ['slug'])
   .index('by_owner', ['ownerUserId'])
+  .index('by_resource', ['resourceId'])
   .index('by_updated', ['updatedAt'])
   .index('by_stats_downloads', ['statsDownloads', 'updatedAt'])
   .index('by_stats_stars', ['statsStars', 'updatedAt'])
@@ -106,6 +121,7 @@ const skills = defineTable({
   .index('by_active_updated', ['softDeletedAt', 'updatedAt'])
 
 const souls = defineTable({
+  resourceId: v.optional(v.id('resources')),
   slug: v.string(),
   displayName: v.string(),
   summary: v.optional(v.string()),
@@ -124,6 +140,15 @@ const souls = defineTable({
 })
   .index('by_slug', ['slug'])
   .index('by_owner', ['ownerUserId'])
+  .index('by_resource', ['resourceId'])
+  .index('by_updated', ['updatedAt'])
+
+const extensions = defineTable({
+  resourceId: v.optional(v.id('resources')),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index('by_resource', ['resourceId'])
   .index('by_updated', ['updatedAt'])
 
 const skillVersions = defineTable({
@@ -191,6 +216,21 @@ const skillVersionFingerprints = defineTable({
   .index('by_version', ['versionId'])
   .index('by_fingerprint', ['fingerprint'])
   .index('by_skill_fingerprint', ['skillId', 'fingerprint'])
+
+const resourceBadges = defineTable({
+  resourceId: v.id('resources'),
+  kind: v.union(
+    v.literal('highlighted'),
+    v.literal('official'),
+    v.literal('deprecated'),
+    v.literal('redactionApproved'),
+  ),
+  byUserId: v.id('users'),
+  at: v.number(),
+})
+  .index('by_resource', ['resourceId'])
+  .index('by_resource_kind', ['resourceId', 'kind'])
+  .index('by_kind_at', ['kind', 'at'])
 
 const skillBadges = defineTable({
   skillId: v.id('skills'),
@@ -296,6 +336,12 @@ const skillStatUpdateCursors = defineTable({
   updatedAt: v.number(),
 }).index('by_key', ['key'])
 
+const automodCursors = defineTable({
+  key: v.string(),
+  cursorUpdatedAt: v.optional(v.number()),
+  updatedAt: v.number(),
+}).index('by_key', ['key'])
+
 const soulEmbeddings = defineTable({
   soulId: v.id('souls'),
   versionId: v.id('soulVersions'),
@@ -334,6 +380,25 @@ const skillReports = defineTable({
   .index('by_skill', ['skillId'])
   .index('by_user', ['userId'])
   .index('by_skill_user', ['skillId', 'userId'])
+
+const skillReportStats = defineTable({
+  skillId: v.id('skills'),
+  reportCount: v.number(),
+  lastReportedAt: v.optional(v.number()),
+})
+  .index('by_skill', ['skillId'])
+  .index('by_last_reported', ['lastReportedAt'])
+
+const skillModeration = defineTable({
+  skillId: v.id('skills'),
+  notes: v.optional(v.string()),
+  reason: v.optional(v.string()),
+  reviewedAt: v.optional(v.number()),
+  hiddenAt: v.optional(v.number()),
+  hiddenBy: v.optional(v.id('users')),
+})
+  .index('by_skill', ['skillId'])
+  .index('by_reviewed', ['reviewedAt'])
 
 const soulComments = defineTable({
   soulId: v.id('souls'),
@@ -444,11 +509,14 @@ const userSkillRootInstalls = defineTable({
 export default defineSchema({
   ...authSchema,
   users,
+  resources,
   skills,
   souls,
+  extensions,
   skillVersions,
   soulVersions,
   skillVersionFingerprints,
+  resourceBadges,
   skillBadges,
   soulVersionFingerprints,
   skillEmbeddings,
@@ -458,8 +526,11 @@ export default defineSchema({
   skillStatBackfillState,
   skillStatEvents,
   skillStatUpdateCursors,
+  automodCursors,
   comments,
   skillReports,
+  skillReportStats,
+  skillModeration,
   soulComments,
   stars,
   soulStars,

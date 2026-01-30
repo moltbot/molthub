@@ -3,6 +3,13 @@ import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { PageShell } from '../components/PageShell'
+import { SectionHeader } from '../components/SectionHeader'
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import { Textarea } from '../components/ui/textarea'
 import { gravatarUrl } from '../lib/gravatar'
 
 export const Route = createFileRoute('/settings')({
@@ -39,8 +46,10 @@ function Settings() {
 
   if (!me) {
     return (
-      <main className="section">
-        <div className="card">Sign in to access settings.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">Sign in to access settings.</Card>
+        </PageShell>
       </main>
     )
   }
@@ -68,128 +77,113 @@ function Settings() {
   }
 
   return (
-    <main className="section settings-shell">
-      <h1 className="section-title">Settings</h1>
-      <div className="card settings-profile">
-        <div className="settings-avatar">
-          {avatar ? (
-            <img src={avatar} alt={identityName} />
-          ) : (
-            <span>{identityName[0]?.toUpperCase() ?? 'U'}</span>
-          )}
-        </div>
-        <div className="settings-profile-body">
-          <div className="settings-name">{identityName}</div>
-          {handle ? <div className="settings-handle">@{handle}</div> : null}
-          {me.email ? <div className="settings-email">{me.email}</div> : null}
-        </div>
-      </div>
-      <form className="card settings-card" onSubmit={onSave}>
-        <label className="settings-field">
-          <span>Display name</span>
-          <input
-            className="settings-input"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-        </label>
-        <label className="settings-field">
-          <span>Bio</span>
-          <textarea
-            className="settings-input"
-            rows={5}
-            value={bio}
-            onChange={(event) => setBio(event.target.value)}
-            placeholder="Tell people what you're building."
-          />
-        </label>
-        <div className="settings-actions">
-          <button className="btn btn-primary settings-save" type="submit">
-            Save
-          </button>
-          {status ? <div className="stat">{status}</div> : null}
-        </div>
-      </form>
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <SectionHeader title="Settings" />
 
-      <div className="card settings-card">
-        <h2 className="section-title danger-title" style={{ marginTop: 0 }}>
-          API tokens
-        </h2>
-        <p className="section-subtitle">
-          Use these tokens for the `clawhub` CLI. Tokens are shown once on creation.
-        </p>
+        <Card className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+          <Avatar className="h-16 w-16">
+            {avatar ? <AvatarImage src={avatar} alt={identityName} /> : null}
+            <AvatarFallback>{identityName[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <div className="text-lg font-semibold">{identityName}</div>
+            {handle ? <div className="text-sm text-muted-foreground">@{handle}</div> : null}
+            {me.email ? <div className="text-sm text-muted-foreground">{me.email}</div> : null}
+          </div>
+        </Card>
 
-        <div className="settings-field">
-          <span>Label</span>
-          <input
-            className="settings-input"
-            value={tokenLabel}
-            onChange={(event) => setTokenLabel(event.target.value)}
-            placeholder="CLI token"
-          />
-        </div>
-        <div className="settings-actions">
-          <button
-            className="btn btn-primary settings-save"
-            type="button"
-            onClick={() => void onCreateToken()}
-          >
-            Create token
-          </button>
-          {newToken ? (
-            <div className="stat" style={{ overflowX: 'auto' }}>
-              <div style={{ marginBottom: 8 }}>Copy this token now:</div>
-              <code>{newToken}</code>
+        <Card className="space-y-4 p-6">
+          <h2 className="font-display text-lg font-semibold">Profile</h2>
+          <form className="space-y-4" onSubmit={onSave}>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Display name</label>
+              <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
             </div>
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Bio</label>
+              <Textarea
+                rows={5}
+                value={bio}
+                onChange={(event) => setBio(event.target.value)}
+                placeholder="Tell people what you're building."
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit">Save</Button>
+              {status ? <span className="text-xs text-muted-foreground">{status}</span> : null}
+            </div>
+          </form>
+        </Card>
 
-        {(tokens ?? []).length ? (
-          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-            {(tokens ?? []).map((token) => (
-              <div
-                key={token._id}
-                className="stat"
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}
-              >
-                <div>
+        <Card className="space-y-4 p-6">
+          <h2 className="font-display text-lg font-semibold">API tokens</h2>
+          <p className="text-sm text-muted-foreground">
+            Use these tokens for the `molthub` CLI. Tokens are shown once on creation.
+          </p>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium">Label</label>
+            <Input
+              value={tokenLabel}
+              onChange={(event) => setTokenLabel(event.target.value)}
+              placeholder="CLI token"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={() => void onCreateToken()}>
+              Create token
+            </Button>
+            {newToken ? (
+              <div className="rounded-[var(--radius)] border border-border bg-muted px-3 py-2 text-xs">
+                <div className="mb-2 text-muted-foreground">Copy this token now:</div>
+                <code className="font-mono text-xs">{newToken}</code>
+              </div>
+            ) : null}
+          </div>
+
+          {(tokens ?? []).length ? (
+            <div className="space-y-2">
+              {(tokens ?? []).map((token) => (
+                <div
+                  key={token._id}
+                  className="flex flex-col gap-2 rounded-[var(--radius)] border border-border px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
-                    <strong>{token.label}</strong>{' '}
-                    <span style={{ opacity: 0.7 }}>({token.prefix}…)</span>
+                    <div className="font-medium">
+                      {token.label} <span className="text-muted-foreground">({token.prefix}…)</span>
+                    </div>
+                    <div className="text-muted-foreground">
+                      Created {formatDate(token.createdAt)}
+                      {token.lastUsedAt ? ` · Used ${formatDate(token.lastUsedAt)}` : ''}
+                      {token.revokedAt ? ` · Revoked ${formatDate(token.revokedAt)}` : ''}
+                    </div>
                   </div>
-                  <div style={{ opacity: 0.7 }}>
-                    Created {formatDate(token.createdAt)}
-                    {token.lastUsedAt ? ` · Used ${formatDate(token.lastUsedAt)}` : ''}
-                    {token.revokedAt ? ` · Revoked ${formatDate(token.revokedAt)}` : ''}
-                  </div>
-                </div>
-                <div>
-                  <button
-                    className="btn"
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={Boolean(token.revokedAt)}
                     onClick={() => void revokeToken({ tokenId: token._id })}
                   >
                     {token.revokedAt ? 'Revoked' : 'Revoke'}
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="section-subtitle" style={{ marginTop: 16 }}>
-            No tokens yet.
-          </p>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No tokens yet.</p>
+          )}
+        </Card>
 
-      <div className="card danger-card">
-        <h2 className="section-title danger-title">Danger zone</h2>
-        <p className="section-subtitle">Soft delete your account. Skills remain public.</p>
-        <button className="btn btn-danger" type="button" onClick={() => void onDelete()}>
-          Delete account
-        </button>
-      </div>
+        <Card className="space-y-3 border border-destructive/40 bg-destructive/5 p-6">
+          <h2 className="font-display text-lg font-semibold text-destructive">Danger zone</h2>
+          <p className="text-sm text-muted-foreground">Soft delete your account. Skills remain public.</p>
+          <Button type="button" variant="destructive" onClick={() => void onDelete()}>
+            Delete account
+          </Button>
+        </Card>
+      </PageShell>
     </main>
   )
 }

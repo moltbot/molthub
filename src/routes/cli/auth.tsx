@@ -3,6 +3,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../convex/_generated/api'
+import { PageShell } from '../../components/PageShell'
+import { SectionHeader } from '../../components/SectionHeader'
+import { Button } from '../../components/ui/button'
+import { Card } from '../../components/ui/card'
 import { useAuthStatus } from '../../lib/useAuthStatus'
 
 export const Route = createFileRoute('/cli/auth')({
@@ -56,83 +60,80 @@ function CliAuth() {
       setStatus(message)
       setToken(null)
     })
-  }, [createToken, isAuthenticated, label, me, redirectUri, safeRedirect, state])
+  }, [createToken, isAuthenticated, label, me, redirectUri, safeRedirect, state, registry])
 
   if (!safeRedirect) {
     return (
-      <main className="section">
-        <div className="card">
-          <h1 className="section-title" style={{ marginTop: 0 }}>
-            CLI login
-          </h1>
-          <p className="section-subtitle">Invalid redirect URL.</p>
-          <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            Run the CLI again to start a fresh login.
-          </p>
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="space-y-3 p-6">
+            <SectionHeader title="CLI login" />
+            <p className="text-sm text-muted-foreground">Invalid redirect URL.</p>
+            <p className="text-sm text-muted-foreground">Run the CLI again to start a fresh login.</p>
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   if (!state) {
     return (
-      <main className="section">
-        <div className="card">
-          <h1 className="section-title" style={{ marginTop: 0 }}>
-            CLI login
-          </h1>
-          <p className="section-subtitle">Missing state.</p>
-          <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            Run the CLI again to start a fresh login.
-          </p>
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="space-y-3 p-6">
+            <SectionHeader title="CLI login" />
+            <p className="text-sm text-muted-foreground">Missing state.</p>
+            <p className="text-sm text-muted-foreground">Run the CLI again to start a fresh login.</p>
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   if (!registry) {
     return (
-      <main className="section">
-        <div className="card">Missing VITE_CONVEX_SITE_URL configuration.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">
+            Missing VITE_CONVEX_SITE_URL configuration.
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   if (!isAuthenticated || !me) {
     return (
-      <main className="section">
-        <div className="card">
-          <h1 className="section-title" style={{ marginTop: 0 }}>
-            CLI login
-          </h1>
-          <p className="section-subtitle">Sign in to create an API token for the CLI.</p>
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={isLoading}
-            onClick={() => void signIn('github')}
-          >
-            Sign in with GitHub
-          </button>
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="space-y-4 p-6">
+            <SectionHeader title="CLI login" />
+            <p className="text-sm text-muted-foreground">
+              Sign in to create an API token for the CLI.
+            </p>
+            <Button type="button" disabled={isLoading} onClick={() => void signIn('github')}>
+              Sign in with GitHub
+            </Button>
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   return (
-    <main className="section">
-      <div className="card">
-        <h1 className="section-title" style={{ marginTop: 0 }}>
-          CLI login
-        </h1>
-        <p className="section-subtitle">{status}</p>
-        {token ? (
-          <div className="stat" style={{ overflowX: 'auto' }}>
-            <div style={{ marginBottom: 8 }}>If redirect fails, copy this token:</div>
-            <code>{token}</code>
-          </div>
-        ) : null}
-      </div>
+    <main className="py-10">
+      <PageShell>
+        <Card className="space-y-4 p-6">
+          <SectionHeader title="CLI login" />
+          <p className="text-sm text-muted-foreground">{status}</p>
+          {token ? (
+            <div className="rounded-[var(--radius)] border border-border bg-muted px-3 py-2 text-xs">
+              <div className="mb-2 text-muted-foreground">If redirect fails, copy this token:</div>
+              <code className="font-mono text-xs">{token}</code>
+            </div>
+          ) : null}
+        </Card>
+      </PageShell>
     </main>
   )
 }

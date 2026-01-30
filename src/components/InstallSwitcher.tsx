@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { cn } from '../lib/utils'
+import { Button } from './ui/button'
 
 type PackageManager = 'npm' | 'pnpm' | 'bun'
 
@@ -27,27 +29,29 @@ export function InstallSwitcher({ exampleSlug = 'sonoscli' }: InstallSwitcherPro
   }, [exampleSlug, pm])
 
   return (
-    <div className="install-switcher">
-      <div className="install-switcher-row">
-        <div className="stat">Install any skill folder in one shot:</div>
-        <div className="install-switcher-toggle" role="tablist" aria-label="Install command">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs text-muted-foreground">Install any skill folder in one shot:</div>
+        <div className="flex gap-2" role="tablist" aria-label="Install command">
           {PACKAGE_MANAGERS.map((entry) => (
-            <button
+            <Button
               key={entry.id}
               type="button"
-              className={
-                pm === entry.id ? 'install-switcher-pill is-active' : 'install-switcher-pill'
-              }
+              variant={pm === entry.id ? 'default' : 'outline'}
+              size="sm"
+              className={cn(pm === entry.id ? '' : 'text-muted-foreground')}
               role="tab"
               aria-selected={pm === entry.id}
               onClick={() => setPm(entry.id)}
             >
               {entry.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
-      <div className="hero-install-code mono">{command}</div>
+      <div className="rounded-[var(--radius)] border border-border bg-muted px-4 py-3 text-xs font-mono">
+        {command}
+      </div>
     </div>
   )
 }

@@ -13,6 +13,16 @@ import {
   selectDefaultFilePath,
   sortVersionsBySemver,
 } from '../lib/diffing'
+import { cn } from '../lib/utils'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 import { ClientOnly } from './ClientOnly'
 
 type SkillDiffCardProps = {
@@ -200,286 +210,210 @@ export function SkillDiffCard({ skill, versions, variant = 'card' }: SkillDiffCa
       }
 
       try {
-        const [nextLeft, nextRight] = await Promise.all([
+        const [leftResult, rightResult] = await Promise.all([
           leftFile ? loadText(leftVersionId, leftFile.path) : Promise.resolve(''),
           rightFile ? loadText(rightVersionId, rightFile.path) : Promise.resolve(''),
         ])
-        if (cancelled) return
-        setLeftText(nextLeft ?? EMPTY_DIFF_TEXT)
-        setRightText(nextRight ?? EMPTY_DIFF_TEXT)
+        if (!cancelled) {
+          setLeftText(leftResult)
+          setRightText(rightResult)
+        }
       } catch (err) {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Failed to load diff')
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Unable to load diff'
+          setError(message)
+        }
       } finally {
         if (!cancelled) setIsLoading(false)
       }
     }
 
     void load()
-
     return () => {
       cancelled = true
     }
   }, [getFileText, leftVersionId, rightVersionId, selectedItem])
 
   useEffect(() => {
-    if (!monaco || typeof document === 'undefined') return
-    const observer = new MutationObserver(() => {
-      applyMonacoTheme(monaco)
+    if (!monaco) return
+    monaco.editor.defineTheme('molthub-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#1b1513',
+        'editor.lineHighlightBackground': '#221a17',
+      },
     })
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    })
-    applyMonacoTheme(monaco)
-    return () => observer.disconnect()
   }, [monaco])
 
-  const leftLabel = leftVersion ? `v${leftVersion.version}` : '—'
-  const rightLabel = rightVersion ? `v${rightVersion.version}` : '—'
-  const diffUnavailable = versions.length < 2
-  const selectionReady = Boolean(leftVersionId && rightVersionId)
-  const fileSelected = Boolean(selectedItem)
+  const containerClass = cn(
+    'space-y-4',
+    variant === 'card' && 'rounded-[var(--radius)] border border-border bg-card p-6',
+  )
 
-  const containerClass = variant === 'card' ? 'card diff-card' : 'diff-card diff-card-embedded'
+  const diffProps: DiffEditorProps = {
+    original: leftText,
+    modified: rightText,
+    theme: 'molthub-dark',
+    options: {
+      renderSideBySide: viewMode === 'split',
+      readOnly: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      renderIndicators: false,
+      scrollbar: {
+        verticalScrollbarSize: 6,
+        horizontalScrollbarSize: 6,
+      },
+    },
+  }
 
   return (
     <div className={containerClass}>
-      <div className="diff-header">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-            Compare versions
-          </h2>
-          <p className="section-subtitle" style={{ margin: 0 }}>
-            Inline or side-by-side diff for any file.
-          </p>
+          <h2 className="font-display text-lg font-semibold">Version diff</h2>
+          <p className="text-sm text-muted-foreground">Compare file changes between versions.</p>
         </div>
-        <fieldset className="diff-toggle-group">
-          <legend className="sr-only">Diff layout</legend>
-          <button
-            className={`diff-toggle${viewMode === 'split' ? ' is-active' : ''}`}
+        <div className="flex items-center gap-2">
+          <Button
             type="button"
+            variant={viewMode === 'split' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setViewMode('split')}
           >
-            Side-by-side
-          </button>
-          <button
-            className={`diff-toggle${viewMode === 'inline' ? ' is-active' : ''}`}
+            Split
+          </Button>
+          <Button
             type="button"
+            variant={viewMode === 'inline' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setViewMode('inline')}
           >
             Inline
-          </button>
-        </fieldset>
+          </Button>
+        </div>
       </div>
 
-      <div className="diff-controls">
-        <div className="diff-select">
-          <label htmlFor="diff-left">Left</label>
-          <select
-            id="diff-left"
-            className="search-input"
-            value={leftVersionId ?? ''}
-            onChange={(event) => setLeftVersionId(event.target.value as Id<'skillVersions'>)}
+      <div className="flex flex-col gap-3 md:flex-row md:items-end">
+        <div className="flex-1">
+          <label className="text-xs font-medium">From</label>
+          <Select
+            value={leftVersionId ? String(leftVersionId) : ''}
+            onValueChange={(value) => setLeftVersionId(value as Id<'skillVersions'>)}
           >
-            <option value="" disabled>
-              Select version
-            </option>
-            {renderOptions(versionOptions)}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select version" />
+            </SelectTrigger>
+            <SelectContent>
+              {versionOptions.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)} disabled={option.disabled}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <button
-          className="btn diff-swap"
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => {
             setLeftVersionId(rightVersionId)
             setRightVersionId(leftVersionId)
           }}
-          disabled={!leftVersionId || !rightVersionId}
         >
           Swap
-        </button>
-        <div className="diff-select">
-          <label htmlFor="diff-right">Right</label>
-          <select
-            id="diff-right"
-            className="search-input"
-            value={rightVersionId ?? ''}
-            onChange={(event) => setRightVersionId(event.target.value as Id<'skillVersions'>)}
+        </Button>
+        <div className="flex-1">
+          <label className="text-xs font-medium">To</label>
+          <Select
+            value={rightVersionId ? String(rightVersionId) : ''}
+            onValueChange={(value) => setRightVersionId(value as Id<'skillVersions'>)}
           >
-            <option value="" disabled>
-              Select version
-            </option>
-            {renderOptions(versionOptions)}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select version" />
+            </SelectTrigger>
+            <SelectContent>
+              {versionOptions.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)} disabled={option.disabled}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="diff-meta">
-        <span>
-          Left {leftLabel} • Right {rightLabel}
-        </span>
-        {diffUnavailable ? <span>Need at least 2 versions.</span> : null}
-      </div>
-
-      <div className="diff-layout">
-        <div className="diff-files">
-          {fileDiffItems.length === 0 ? (
-            <div className="diff-empty">No files to compare.</div>
-          ) : (
-            fileDiffItems.map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                className={`diff-file${item.path === selectedPath ? ' is-active' : ''}`}
-                onClick={() => setSelectedPath(item.path)}
-              >
-                <span className={`diff-pill diff-pill-${item.status}`}>{item.status}</span>
-                <span className="diff-file-name">{item.path}</span>
-              </button>
-            ))
-          )}
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="w-full lg:w-64">
+          <div className="rounded-[var(--radius)] border border-border bg-muted p-3 text-xs text-muted-foreground">
+            {fileDiffItems.length} file{fileDiffItems.length === 1 ? '' : 's'}
+          </div>
+          <div className="mt-3 max-h-[360px] space-y-2 overflow-auto">
+            {fileDiffItems.length === 0 ? (
+              <div className="rounded-[var(--radius)] border border-dashed border-border p-3 text-xs text-muted-foreground">
+                No files to compare.
+              </div>
+            ) : (
+              fileDiffItems.map((item) => (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => setSelectedPath(item.path)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-[var(--radius)] border border-border px-3 py-2 text-left text-xs transition',
+                    item.path === selectedPath
+                      ? 'border-primary/60 bg-background'
+                      : 'bg-card hover:border-primary/40',
+                  )}
+                >
+                  <Badge variant="secondary">{item.status}</Badge>
+                  <span className="font-mono text-xs text-muted-foreground">{item.path}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
-        <div className="diff-view">
+
+        <div className="flex-1">
           {error ? (
-            <div className="diff-empty">{error}</div>
-          ) : sizeWarning ? (
-            <div className="diff-empty">
-              {sizeWarning.side === 'left' ? 'Left' : 'Right'} file exceeds 200KB:{' '}
-              {sizeWarning.path}
+            <div className="rounded-[var(--radius)] border border-dashed border-border p-6 text-sm text-muted-foreground">
+              {error}
             </div>
-          ) : diffUnavailable ? (
-            <div className="diff-empty">Publish another version to compare.</div>
-          ) : !selectionReady ? (
-            <div className="diff-empty">Select two versions to compare.</div>
-          ) : !fileSelected ? (
-            <div className="diff-empty">Select a file to compare.</div>
+          ) : sizeWarning ? (
+            <div className="rounded-[var(--radius)] border border-dashed border-border p-6 text-sm text-muted-foreground">
+              {sizeWarning.path} is too large to diff.
+            </div>
+          ) : !leftVersionId || !rightVersionId ? (
+            <div className="rounded-[var(--radius)] border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Select two versions to compare.
+            </div>
+          ) : !selectedItem ? (
+            <div className="rounded-[var(--radius)] border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Select a file to compare.
+            </div>
           ) : (
-            <ClientOnly fallback={<div className="diff-empty">Preparing diff…</div>}>
-              <DiffEditor
-                className="diff-monaco"
-                original={leftText}
-                modified={rightText}
-                theme={getMonacoThemeName()}
-                loading={<div className="diff-empty">Loading diff…</div>}
-                options={buildDiffOptions(viewMode)}
-              />
-              {isLoading ? <div className="diff-loading">Loading…</div> : null}
+            <ClientOnly
+              fallback={
+                <div className="rounded-[var(--radius)] border border-dashed border-border p-6 text-sm text-muted-foreground">
+                  Preparing diff…
+                </div>
+              }
+            >
+              <div className="relative h-[480px] overflow-hidden rounded-[var(--radius)] border border-border">
+                <DiffEditor className="h-full w-full" {...diffProps} />
+                {isLoading ? (
+                  <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm">
+                    Loading…
+                  </div>
+                ) : null}
+              </div>
             </ClientOnly>
           )}
         </div>
       </div>
     </div>
   )
-}
-
-function renderOptions(options: VersionOption[]) {
-  const groups: Record<VersionOption['group'], VersionOption[]> = {
-    Special: [],
-    Tags: [],
-    Versions: [],
-  }
-  for (const option of options) {
-    groups[option.group].push(option)
-  }
-  return (['Special', 'Tags', 'Versions'] as const)
-    .filter((group) => groups[group].length > 0)
-    .map((group) => (
-      <optgroup key={group} label={group}>
-        {groups[group].map((option) => (
-          <option key={`${group}-${option.value}`} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </optgroup>
-    ))
-}
-
-function getMonacoThemeName() {
-  if (typeof document === 'undefined') return 'clawhub-light'
-  return document.documentElement.dataset.theme === 'dark' ? 'clawhub-dark' : 'clawhub-light'
-}
-
-function buildDiffOptions(viewMode: 'split' | 'inline'): DiffEditorProps['options'] {
-  return {
-    readOnly: true,
-    renderSideBySide: viewMode === 'split',
-    renderSideBySideInlineBreakpoint: 860,
-    wordWrap: 'on',
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    overviewRulerBorder: false,
-    renderIndicators: true,
-    diffAlgorithm: 'advanced',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 13,
-  }
-}
-
-function applyMonacoTheme(monaco: NonNullable<ReturnType<typeof useMonaco>>) {
-  const styles = getComputedStyle(document.documentElement)
-  const surface = normalizeHex(styles.getPropertyValue('--surface').trim() || '#ffffff')
-  const surfaceMuted = styles.getPropertyValue('--surface-muted').trim() || '#f6f1ec'
-  const ink = styles.getPropertyValue('--ink').trim() || '#1d1a17'
-  const inkSoft = styles.getPropertyValue('--ink-soft').trim() || '#4c463f'
-  const line = styles.getPropertyValue('--line').trim() || 'rgba(29, 26, 23, 0.12)'
-  const accent = styles.getPropertyValue('--accent').trim() || '#ff6b4a'
-  const seafoam = styles.getPropertyValue('--seafoam').trim() || '#2bc6a4'
-  const diffAdded = styles.getPropertyValue('--diff-added').trim() || seafoam
-  const diffRemoved = styles.getPropertyValue('--diff-removed').trim() || accent
-  const background = surface
-  const gutter = surfaceMuted
-  const isDark = document.documentElement.dataset.theme === 'dark'
-  const base = isDark ? 'vs-dark' : 'vs'
-
-  const diffInserted = toRgba(diffAdded, isDark ? 0.12 : 0.16)
-  const diffRemovedBg = toRgba(diffRemoved, isDark ? 0.12 : 0.16)
-
-  monaco.editor.defineTheme(`clawhub-${isDark ? 'dark' : 'light'}`, {
-    base,
-    inherit: true,
-    rules: [
-      { token: '', foreground: normalizeHex(ink) },
-      { token: 'comment', foreground: normalizeHex(inkSoft) },
-    ],
-    colors: {
-      'editor.background': background,
-      'editor.foreground': ink,
-      'editorLineNumber.foreground': inkSoft,
-      'editorLineNumber.activeForeground': ink,
-      'editorGutter.background': gutter,
-      'editor.selectionBackground': toRgba(accent, 0.18),
-      'editor.inactiveSelectionBackground': toRgba(accent, 0.12),
-      'editorWidget.background': surface,
-      'editorWidget.border': line,
-      'editorWidget.foreground': ink,
-      'diffEditor.insertedTextBackground': diffInserted,
-      'diffEditor.removedTextBackground': diffRemovedBg,
-      'diffEditor.insertedLineBackground': diffInserted,
-      'diffEditor.removedLineBackground': diffRemovedBg,
-      'diffEditor.border': line,
-      'scrollbarSlider.background': toRgba(inkSoft, 0.15),
-      'scrollbarSlider.hoverBackground': toRgba(inkSoft, 0.28),
-      'scrollbarSlider.activeBackground': toRgba(inkSoft, 0.4),
-    },
-  })
-
-  monaco.editor.setTheme(`clawhub-${isDark ? 'dark' : 'light'}`)
-}
-
-function normalizeHex(value: string) {
-  if (!value.startsWith('#')) return value
-  if (value.length === 4) {
-    return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`
-  }
-  return value
-}
-
-function toRgba(color: string, alpha: number) {
-  const hex = normalizeHex(color).replace('#', '')
-  if (hex.length !== 6) return color
-  const r = Number.parseInt(hex.slice(0, 2), 16)
-  const g = Number.parseInt(hex.slice(2, 4), 16)
-  const b = Number.parseInt(hex.slice(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }

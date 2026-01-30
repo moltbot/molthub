@@ -7,7 +7,7 @@ import {
   parseArk,
   type SkillInstallSpec,
   TEXT_FILE_EXTENSION_SET,
-} from 'clawhub-schema'
+} from 'molthub-schema'
 import { parse as parseYaml } from 'yaml'
 
 export type ParsedSkillFrontmatter = Record<string, unknown>
@@ -59,42 +59,45 @@ export function getFrontmatterMetadata(frontmatter: ParsedSkillFrontmatter) {
   return undefined
 }
 
-export function parseClawdisMetadata(frontmatter: ParsedSkillFrontmatter) {
+export function parseMoltbotMetadata(frontmatter: ParsedSkillFrontmatter) {
   const metadata = getFrontmatterMetadata(frontmatter)
   const metadataRecord =
     metadata && typeof metadata === 'object' && !Array.isArray(metadata)
       ? (metadata as Record<string, unknown>)
       : undefined
+  const moltbotMeta = metadataRecord?.moltbot
   const clawdbotMeta = metadataRecord?.clawdbot
   const clawdisMeta = metadataRecord?.clawdis
   const metadataSource =
-    clawdbotMeta && typeof clawdbotMeta === 'object' && !Array.isArray(clawdbotMeta)
-      ? (clawdbotMeta as Record<string, unknown>)
-      : clawdisMeta && typeof clawdisMeta === 'object' && !Array.isArray(clawdisMeta)
-        ? (clawdisMeta as Record<string, unknown>)
-        : undefined
-  const clawdisRaw = metadataSource ?? frontmatter.clawdis
-  if (!clawdisRaw || typeof clawdisRaw !== 'object' || Array.isArray(clawdisRaw)) return undefined
+    moltbotMeta && typeof moltbotMeta === 'object' && !Array.isArray(moltbotMeta)
+      ? (moltbotMeta as Record<string, unknown>)
+      : clawdbotMeta && typeof clawdbotMeta === 'object' && !Array.isArray(clawdbotMeta)
+        ? (clawdbotMeta as Record<string, unknown>)
+        : clawdisMeta && typeof clawdisMeta === 'object' && !Array.isArray(clawdisMeta)
+          ? (clawdisMeta as Record<string, unknown>)
+          : undefined
+  const moltbotRaw = metadataSource ?? frontmatter.moltbot ?? frontmatter.clawdis
+  if (!moltbotRaw || typeof moltbotRaw !== 'object' || Array.isArray(moltbotRaw)) return undefined
 
   try {
-    const clawdisObj = clawdisRaw as Record<string, unknown>
+    const moltbotObj = moltbotRaw as Record<string, unknown>
     const requiresRaw =
-      typeof clawdisObj.requires === 'object' && clawdisObj.requires !== null
-        ? (clawdisObj.requires as Record<string, unknown>)
+      typeof moltbotObj.requires === 'object' && moltbotObj.requires !== null
+        ? (moltbotObj.requires as Record<string, unknown>)
         : undefined
-    const installRaw = Array.isArray(clawdisObj.install) ? (clawdisObj.install as unknown[]) : []
+    const installRaw = Array.isArray(moltbotObj.install) ? (moltbotObj.install as unknown[]) : []
     const install = installRaw
       .map((entry) => parseInstallSpec(entry))
       .filter((entry): entry is SkillInstallSpec => Boolean(entry))
-    const osRaw = normalizeStringList(clawdisObj.os)
+    const osRaw = normalizeStringList(moltbotObj.os)
 
     const metadata: ClawdisSkillMetadata = {}
-    if (typeof clawdisObj.always === 'boolean') metadata.always = clawdisObj.always
-    if (typeof clawdisObj.emoji === 'string') metadata.emoji = clawdisObj.emoji
-    if (typeof clawdisObj.homepage === 'string') metadata.homepage = clawdisObj.homepage
-    if (typeof clawdisObj.skillKey === 'string') metadata.skillKey = clawdisObj.skillKey
-    if (typeof clawdisObj.primaryEnv === 'string') metadata.primaryEnv = clawdisObj.primaryEnv
-    if (typeof clawdisObj.cliHelp === 'string') metadata.cliHelp = clawdisObj.cliHelp
+    if (typeof moltbotObj.always === 'boolean') metadata.always = moltbotObj.always
+    if (typeof moltbotObj.emoji === 'string') metadata.emoji = moltbotObj.emoji
+    if (typeof moltbotObj.homepage === 'string') metadata.homepage = moltbotObj.homepage
+    if (typeof moltbotObj.skillKey === 'string') metadata.skillKey = moltbotObj.skillKey
+    if (typeof moltbotObj.primaryEnv === 'string') metadata.primaryEnv = moltbotObj.primaryEnv
+    if (typeof moltbotObj.cliHelp === 'string') metadata.cliHelp = moltbotObj.cliHelp
     if (osRaw.length > 0) metadata.os = osRaw
 
     if (requiresRaw) {
@@ -112,15 +115,19 @@ export function parseClawdisMetadata(frontmatter: ParsedSkillFrontmatter) {
     }
 
     if (install.length > 0) metadata.install = install
-    const nix = parseNixPluginSpec(clawdisObj.nix)
+    const nix = parseNixPluginSpec(moltbotObj.nix)
     if (nix) metadata.nix = nix
-    const config = parseClawdbotConfigSpec(clawdisObj.config)
+    const config = parseClawdbotConfigSpec(moltbotObj.config)
     if (config) metadata.config = config
 
-    return parseArk(ClawdisSkillMetadataSchema, metadata, 'Clawdis metadata')
+    return parseArk(ClawdisSkillMetadataSchema, metadata, 'Moltbot metadata')
   } catch {
     return undefined
   }
+}
+
+export function parseClawdisMetadata(frontmatter: ParsedSkillFrontmatter) {
+  return parseMoltbotMetadata(frontmatter)
 }
 
 export function isTextFile(path: string, contentType?: string | null) {

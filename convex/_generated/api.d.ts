@@ -9,11 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as automod from "../automod.js";
 import type * as comments from "../comments.js";
 import type * as crons from "../crons.js";
 import type * as devSeed from "../devSeed.js";
 import type * as devSeedExtra from "../devSeedExtra.js";
 import type * as downloads from "../downloads.js";
+import type * as extensions from "../extensions.js";
 import type * as githubBackups from "../githubBackups.js";
 import type * as githubBackupsNode from "../githubBackupsNode.js";
 import type * as githubImport from "../githubImport.js";
@@ -34,6 +36,7 @@ import type * as lib_githubSoulBackup from "../lib/githubSoulBackup.js";
 import type * as lib_leaderboards from "../lib/leaderboards.js";
 import type * as lib_moderation from "../lib/moderation.js";
 import type * as lib_public from "../lib/public.js";
+import type * as lib_resource from "../lib/resource.js";
 import type * as lib_searchText from "../lib/searchText.js";
 import type * as lib_skillBackfill from "../lib/skillBackfill.js";
 import type * as lib_skillPublish from "../lib/skillPublish.js";
@@ -70,11 +73,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  automod: typeof automod;
   comments: typeof comments;
   crons: typeof crons;
   devSeed: typeof devSeed;
   devSeedExtra: typeof devSeedExtra;
   downloads: typeof downloads;
+  extensions: typeof extensions;
   githubBackups: typeof githubBackups;
   githubBackupsNode: typeof githubBackupsNode;
   githubImport: typeof githubImport;
@@ -95,6 +100,7 @@ declare const fullApi: ApiFromModules<{
   "lib/leaderboards": typeof lib_leaderboards;
   "lib/moderation": typeof lib_moderation;
   "lib/public": typeof lib_public;
+  "lib/resource": typeof lib_resource;
   "lib/searchText": typeof lib_searchText;
   "lib/skillBackfill": typeof lib_skillBackfill;
   "lib/skillPublish": typeof lib_skillPublish;

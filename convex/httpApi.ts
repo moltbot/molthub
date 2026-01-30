@@ -5,7 +5,7 @@ import {
   CliSkillDeleteRequestSchema,
   CliTelemetrySyncRequestSchema,
   parseArk,
-} from 'clawhub-schema'
+} from 'molthub-schema'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import type { ActionCtx } from './_generated/server'

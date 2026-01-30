@@ -3,9 +3,18 @@ import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { api } from '../../../convex/_generated/api'
 import type { Doc } from '../../../convex/_generated/dataModel'
+import { PageShell } from '../../components/PageShell'
+import { SectionHeader } from '../../components/SectionHeader'
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Card } from '../../components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
+import { ResourceCard } from '../../components/ResourceCard'
 import { SkillCard } from '../../components/SkillCard'
 import { getSkillBadges } from '../../lib/badges'
-import type { PublicSkill, PublicUser } from '../../lib/publicUser'
+import type { PublicResource, PublicSkill, PublicSoul, PublicUser } from '../../lib/publicUser'
+import { toCanonicalResourcePath } from '../../lib/resources'
 
 export const Route = createFileRoute('/u/$handle')({
   component: UserProfile,
@@ -19,6 +28,14 @@ function UserProfile() {
     api.skills.list,
     user ? { ownerUserId: user._id, limit: 50 } : 'skip',
   ) as PublicSkill[] | undefined
+  const publishedSouls = useQuery(
+    api.souls.list,
+    user ? { ownerUserId: user._id, limit: 50 } : 'skip',
+  ) as PublicSoul[] | undefined
+  const publishedExtensions = useQuery(
+    api.extensions.listByOwner,
+    user ? { ownerUserId: user._id, limit: 50 } : 'skip',
+  ) as PublicResource[] | undefined
   const starredSkills = useQuery(
     api.stars.listByUser,
     user ? { userId: user._id, limit: 50 } : 'skip',
@@ -38,18 +55,20 @@ function UserProfile() {
 
   if (user === undefined) {
     return (
-      <main className="section">
-        <div className="card">
-          <div className="loading-indicator">Loading user…</div>
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">Loading user…</Card>
+        </PageShell>
       </main>
     )
   }
 
   if (user === null) {
     return (
-      <main className="section">
-        <div className="card">User not found.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">User not found.</Card>
+        </PageShell>
       </main>
     )
   }
@@ -60,111 +79,150 @@ function UserProfile() {
   const initial = displayName.charAt(0).toUpperCase()
   const isLoadingSkills = starredSkills === undefined
   const skills = starredSkills ?? []
-  const isLoadingPublished = publishedSkills === undefined
+  const isLoadingPublished =
+    publishedSkills === undefined ||
+    publishedSouls === undefined ||
+    publishedExtensions === undefined
   const published = publishedSkills ?? []
+  const publishedSoulList = publishedSouls ?? []
+  const publishedExtensionList = publishedExtensions ?? []
 
   return (
-    <main className="section">
-      <div className="card settings-profile" style={{ marginBottom: 22 }}>
-        <div className="settings-avatar" aria-hidden="true">
-          {avatar ? <img src={avatar} alt="" /> : <span>{initial}</span>}
-        </div>
-        <div className="settings-profile-body">
-          <div className="settings-name">{displayName}</div>
-          <div className="settings-handle">@{displayHandle}</div>
-        </div>
-      </div>
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <Card className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+          <Avatar className="h-16 w-16">
+            {avatar ? <AvatarImage src={avatar} alt={displayName} /> : null}
+            <AvatarFallback>{initial}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="text-xl font-semibold">{displayName}</div>
+            <div className="text-sm text-muted-foreground">@{displayHandle}</div>
+          </div>
+        </Card>
 
-      {isSelf ? (
-        <div className="profile-tabs" role="tablist" aria-label="Profile tabs">
-          <button
-            className={tab === 'stars' ? 'profile-tab is-active' : 'profile-tab'}
-            type="button"
-            role="tab"
-            aria-selected={tab === 'stars'}
-            onClick={() => setTab('stars')}
-          >
-            Stars
-          </button>
-          <button
-            className={tab === 'installed' ? 'profile-tab is-active' : 'profile-tab'}
-            type="button"
-            role="tab"
-            aria-selected={tab === 'installed'}
-            onClick={() => setTab('installed')}
-          >
-            Installed
-          </button>
-        </div>
-      ) : null}
+        <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
+          <TabsList>
+            <TabsTrigger value="stars">Stars</TabsTrigger>
+            {isSelf ? <TabsTrigger value="installed">Installed</TabsTrigger> : null}
+          </TabsList>
+          <TabsContent value="installed">
+            <InstalledSection
+              includeRemoved={includeRemoved}
+              onToggleRemoved={() => setIncludeRemoved((value) => !value)}
+              data={installed}
+            />
+          </TabsContent>
+          <TabsContent value="stars" className="space-y-8">
+            <section className="space-y-4">
+              <SectionHeader title="Published" description="Projects published by this user." />
+              {isLoadingPublished ? (
+                <Card className="p-6 text-sm text-muted-foreground">Loading projects…</Card>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="text-sm font-semibold">Skills</div>
+                    {published.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {published.map((skill) => (
+                          <SkillCard
+                            key={skill._id}
+                            skill={skill}
+                            ownerHandle={user.handle ?? null}
+                            badge={getSkillBadges(skill)}
+                            summaryFallback="Agent-ready skill pack."
+                            meta={
+                              <span>
+                                ⭐ {skill.stats.stars} stars · ⤓ {skill.stats.downloads} downloads ·
+                                ⤒ {skill.stats.installsAllTime ?? 0} installs
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="p-4 text-sm text-muted-foreground">No published skills yet.</Card>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="text-sm font-semibold">Souls</div>
+                    {publishedSoulList.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {publishedSoulList.map((soul) => (
+                          <ResourceCard
+                            key={soul._id}
+                            type="soul"
+                            resource={soul}
+                            ownerHandle={user.handle ?? null}
+                            summaryFallback="SOUL.md bundle."
+                            meta={
+                              <span>
+                                ⭐ {soul.stats.stars} stars · ⤓ {soul.stats.downloads} downloads ·
+                                {soul.stats.versions} versions
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="p-4 text-sm text-muted-foreground">No published souls yet.</Card>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="text-sm font-semibold">Extensions</div>
+                    {publishedExtensionList.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {publishedExtensionList.map((extension) => (
+                          <ResourceCard
+                            key={extension._id}
+                            type="extension"
+                            resource={extension}
+                            ownerHandle={user.handle ?? null}
+                            summaryFallback="Extension bundle."
+                            meta={
+                              <span>
+                                ⭐ {extension.stats.stars} stars · ⤓ {extension.stats.downloads} downloads
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="p-4 text-sm text-muted-foreground">No published extensions yet.</Card>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
 
-      {tab === 'installed' && isSelf ? (
-        <InstalledSection
-          includeRemoved={includeRemoved}
-          onToggleRemoved={() => setIncludeRemoved((value) => !value)}
-          data={installed}
-        />
-      ) : (
-        <>
-          <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
-            Published
-          </h2>
-          <p className="section-subtitle">Skills published by this user.</p>
-
-          {isLoadingPublished ? (
-            <div className="card">
-              <div className="loading-indicator">Loading published skills…</div>
-            </div>
-          ) : published.length > 0 ? (
-            <div className="grid" style={{ marginBottom: 18 }}>
-              {published.map((skill) => (
-                <SkillCard
-                  key={skill._id}
-                  skill={skill}
-                  badge={getSkillBadges(skill)}
-                  summaryFallback="Agent-ready skill pack."
-                  meta={
-                    <div className="stat">
-                      ⭐ {skill.stats.stars} · ⤓ {skill.stats.downloads} · ⤒{' '}
-                      {skill.stats.installsAllTime ?? 0}
-                    </div>
-                  }
-                />
-              ))}
-            </div>
-          ) : null}
-
-          <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
-            Stars
-          </h2>
-          <p className="section-subtitle">Skills this user has starred.</p>
-
-          {isLoadingSkills ? (
-            <div className="card">
-              <div className="loading-indicator">Loading stars…</div>
-            </div>
-          ) : skills.length === 0 ? (
-            <div className="card">No stars yet.</div>
-          ) : (
-            <div className="grid">
-              {skills.map((skill) => (
-                <SkillCard
-                  key={skill._id}
-                  skill={skill}
-                  badge={getSkillBadges(skill)}
-                  summaryFallback="Agent-ready skill pack."
-                  meta={
-                    <div className="stat">
-                      ⭐ {skill.stats.stars} · ⤓ {skill.stats.downloads} · ⤒{' '}
-                      {skill.stats.installsAllTime ?? 0}
-                    </div>
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+            <section className="space-y-4">
+              <SectionHeader title="Stars" description="Skills this user has starred." />
+              {isLoadingSkills ? (
+                <Card className="p-6 text-sm text-muted-foreground">Loading stars…</Card>
+              ) : skills.length === 0 ? (
+                <Card className="p-6 text-sm text-muted-foreground">No stars yet.</Card>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {skills.map((skill) => (
+                    <SkillCard
+                      key={skill._id}
+                      skill={skill}
+                      badge={getSkillBadges(skill)}
+                      summaryFallback="Agent-ready skill pack."
+                      meta={
+                        <span>
+                          ⭐ {skill.stats.stars} stars · ⤓ {skill.stats.downloads} downloads · ⤒{' '}
+                          {skill.stats.installsAllTime ?? 0} installs
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </TabsContent>
+        </Tabs>
+      </PageShell>
     </main>
   )
 }
@@ -179,106 +237,98 @@ function InstalledSection(props: {
   const data = props.data
   if (data === undefined) {
     return (
-      <>
-        <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
-          Installed
-        </h2>
-        <div className="card">
-          <div className="loading-indicator">Loading telemetry…</div>
-        </div>
-      </>
+      <Card className="p-6 text-sm text-muted-foreground">Loading telemetry…</Card>
     )
   }
 
   if (data === null) {
-    return (
-      <>
-        <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
-          Installed
-        </h2>
-        <div className="card">Sign in to view your installed skills.</div>
-      </>
-    )
+    return <Card className="p-6 text-sm text-muted-foreground">Sign in to view your installed skills.</Card>
   }
 
   return (
-    <>
-      <h2 className="section-title" style={{ fontSize: '1.3rem' }}>
-        Installed
-      </h2>
-      <p className="section-subtitle" style={{ maxWidth: 760 }}>
-        Private view. Only you can see your folders/roots. Everyone else only sees aggregated
-        install counts per skill.
-      </p>
-      <div className="profile-actions">
-        <button className="btn" type="button" onClick={props.onToggleRemoved}>
+    <div className="space-y-4">
+      <SectionHeader
+        title="Installed"
+        description="Private view. Only you can see your folders/roots. Everyone else only sees aggregated install counts per skill."
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={props.onToggleRemoved}>
           {props.includeRemoved ? 'Hide removed' : 'Show removed'}
-        </button>
-        <button className="btn" type="button" onClick={() => setShowRaw((value) => !value)}>
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setShowRaw((value) => !value)}>
           {showRaw ? 'Hide JSON' : 'Show JSON'}
-        </button>
-        <button
-          className="btn"
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           onClick={() => {
             if (!window.confirm('Delete all telemetry data?')) return
             void clearTelemetry()
           }}
         >
           Delete telemetry
-        </button>
+        </Button>
       </div>
 
       {showRaw ? (
-        <div className="card telemetry-json" style={{ marginBottom: 18 }}>
-          <pre className="mono" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+        <Card className="p-4">
+          <pre className="whitespace-pre-wrap text-xs font-mono">
             {JSON.stringify(data, null, 2)}
           </pre>
-        </div>
+        </Card>
       ) : null}
 
       {data.roots.length === 0 ? (
-        <div className="card">No telemetry yet. Run `clawhub sync` from the CLI.</div>
+        <Card className="p-6 text-sm text-muted-foreground">
+          No telemetry yet. Run `molthub sync` from the CLI.
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="space-y-4">
           {data.roots.map((root) => (
-            <div key={root.rootId} className="card telemetry-root">
-              <div className="telemetry-root-header">
+            <Card key={root.rootId} className="space-y-3 p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="telemetry-root-title">{root.label}</div>
-                  <div className="telemetry-root-meta">
+                  <div className="text-sm font-semibold">{root.label}</div>
+                  <div className="text-xs text-muted-foreground">
                     Last sync {new Date(root.lastSeenAt).toLocaleString()}
                     {root.expiredAt ? ' · stale' : ''}
                   </div>
                 </div>
-                <div className="tag">{root.skills.length} skills</div>
+                <Badge variant="secondary">{root.skills.length} skills</Badge>
               </div>
               {root.skills.length === 0 ? (
-                <div className="stat">No skills found in this root.</div>
+                <div className="text-sm text-muted-foreground">No skills found in this root.</div>
               ) : (
-                <div className="telemetry-skill-list">
+                <div className="space-y-2">
                   {root.skills.map((entry) => (
-                    <div key={`${root.rootId}:${entry.skill.slug}`} className="telemetry-skill-row">
+                    <div
+                      key={`${root.rootId}:${entry.skill.slug}`}
+                      className="flex items-center justify-between rounded-[var(--radius)] border border-border px-3 py-2 text-xs"
+                    >
                       <a
-                        className="telemetry-skill-link"
-                        href={`/${encodeURIComponent(String(entry.skill.ownerUserId))}/${entry.skill.slug}`}
+                        className="font-medium"
+                        href={toCanonicalResourcePath(
+                          'skill',
+                          String(entry.skill.ownerUserId),
+                          entry.skill.slug,
+                        )}
                       >
                         <span>{entry.skill.displayName}</span>
-                        <span className="telemetry-skill-slug">/{entry.skill.slug}</span>
+                        <span className="text-muted-foreground"> /{entry.skill.slug}</span>
                       </a>
-                      <div className="telemetry-skill-meta mono">
-                        {entry.lastVersion ? `v${entry.lastVersion}` : 'v?'}{' '}
-                        {entry.removedAt ? '· removed' : ''}
+                      <div className="text-muted-foreground font-mono">
+                        {entry.lastVersion ? `v${entry.lastVersion}` : 'v?'}
+                        {entry.removedAt ? ' · removed' : ''}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
-    </>
+    </div>
   )
 }
 

@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -7,9 +8,16 @@ import type { Doc } from '../../convex/_generated/dataModel'
 import type { PublicSoul, PublicUser } from '../lib/publicUser'
 import { isModerator } from '../lib/roles'
 import { useAuthStatus } from '../lib/useAuthStatus'
+import { PageShell } from './PageShell'
+import { ResourceDetailShell } from './ResourceDetailShell'
+import { Button, buttonVariants } from './ui/button'
+import { Card } from './ui/card'
+import { Textarea } from './ui/textarea'
 
 type SoulDetailPageProps = {
   slug: string
+  canonicalOwner?: string
+  redirectToCanonical?: boolean
 }
 
 type SoulBySlugResult = {
@@ -18,7 +26,8 @@ type SoulBySlugResult = {
   owner: PublicUser | null
 } | null
 
-export function SoulDetailPage({ slug }: SoulDetailPageProps) {
+export function SoulDetailPage({ slug, canonicalOwner, redirectToCanonical }: SoulDetailPageProps) {
+  const navigate = useNavigate()
   const { isAuthenticated, me } = useAuthStatus()
   const result = useQuery(api.souls.getBySlug, { slug }) as SoulBySlugResult | undefined
   const toggleStar = useMutation(api.soulStars.toggle)
@@ -55,18 +64,43 @@ export function SoulDetailPage({ slug }: SoulDetailPageProps) {
     return stripFrontmatter(readme)
   }, [readme])
 
+  const ownerHandle = owner?.handle ?? owner?.name ?? null
+  const ownerParam = ownerHandle ?? (owner?._id ? String(owner._id) : null)
+  const wantsCanonicalRedirect = Boolean(
+    ownerParam &&
+      (redirectToCanonical ||
+        (typeof canonicalOwner === 'string' && canonicalOwner && canonicalOwner !== ownerParam)),
+  )
+
+  useEffect(() => {
+    if (!wantsCanonicalRedirect || !ownerParam) return
+    void navigate({
+      to: '/souls/$owner/$slug',
+      params: { owner: ownerParam, slug },
+      replace: true,
+    })
+  }, [navigate, ownerParam, slug, wantsCanonicalRedirect])
+
   useEffect(() => {
     if (seedEnsuredRef.current) return
     seedEnsuredRef.current = true
     void ensureSoulSeeds({})
   }, [ensureSoulSeeds])
 
+  const latestVersionId = latestVersion?._id
+
+  const getReadmeRef = useRef(getReadme)
+
   useEffect(() => {
-    if (!latestVersion) return
+    getReadmeRef.current = getReadme
+  }, [getReadme])
+
+  useEffect(() => {
+    if (!latestVersionId) return
     setReadme(null)
     setReadmeError(null)
     let cancelled = false
-    void getReadme({ versionId: latestVersion._id })
+    void getReadmeRef.current({ versionId: latestVersionId })
       .then((data) => {
         if (cancelled) return
         setReadme(data.text)
@@ -79,127 +113,121 @@ export function SoulDetailPage({ slug }: SoulDetailPageProps) {
     return () => {
       cancelled = true
     }
-  }, [latestVersion, getReadme])
+  }, [latestVersionId])
 
-  if (isLoadingSoul) {
+  if (isLoadingSoul || wantsCanonicalRedirect) {
     return (
-      <main className="section">
-        <div className="card">
-          <div className="loading-indicator">Loading soul…</div>
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">Loading soul…</Card>
+        </PageShell>
       </main>
     )
   }
 
   if (result === null || !soul) {
     return (
-      <main className="section">
-        <div className="card">Soul not found.</div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">Soul not found.</Card>
+        </PageShell>
       </main>
     )
   }
 
-  const ownerHandle = owner?.handle ?? owner?.name ?? null
   const downloadBase = `${import.meta.env.VITE_CONVEX_SITE_URL}/api/v1/souls/${soul.slug}/file`
 
   return (
-    <main className="section">
-      <div className="skill-detail-stack">
-        <div className="card skill-hero">
-          <div className="skill-hero-header">
-            <div className="skill-hero-title">
-              <h1 className="section-title" style={{ margin: 0 }}>
-                {soul.displayName}
-              </h1>
-              <p className="section-subtitle">{soul.summary ?? 'No summary provided.'}</p>
-              <div className="stat">
-                ⭐ {soul.stats.stars} · ⤓ {soul.stats.downloads} · {soul.stats.versions} versions
-              </div>
-              {ownerHandle ? (
-                <div className="stat">
-                  by <a href={`/u/${ownerHandle}`}>@{ownerHandle}</a>
-                </div>
-              ) : null}
-              <div className="skill-actions">
-                {isAuthenticated ? (
-                  <button
-                    className={`star-toggle${isStarred ? ' is-active' : ''}`}
-                    type="button"
-                    onClick={() => void toggleStar({ soulId: soul._id })}
-                    aria-label={isStarred ? 'Unstar soul' : 'Star soul'}
-                  >
-                    <span aria-hidden="true">★</span>
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <div className="skill-hero-cta">
-              <div className="skill-version-pill">
-                <span className="skill-version-label">Current version</span>
-                <strong>v{latestVersion?.version ?? '—'}</strong>
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <ResourceDetailShell
+          title={soul.displayName}
+          subtitle={soul.summary ?? 'No summary provided.'}
+          stats={
+            <span>
+              ⭐ {soul.stats.stars} · ⤓ {soul.stats.downloads} · {soul.stats.versions} versions
+            </span>
+          }
+          ownerLine={
+            ownerHandle ? (
+              <span>
+                by <a href={`/u/${ownerHandle}`}>@{ownerHandle}</a>
+              </span>
+            ) : null
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-[var(--radius)] border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+                <div>Current version</div>
+                <strong className="text-foreground">v{latestVersion?.version ?? '—'}</strong>
               </div>
               <a
-                className="btn btn-primary"
+                className={buttonVariants()}
                 href={`${downloadBase}?path=SOUL.md`}
                 aria-label="Download SOUL.md"
               >
                 Download SOUL.md
               </a>
+              {isAuthenticated ? (
+                <Button
+                  type="button"
+                  variant={isStarred ? 'default' : 'outline'}
+                  onClick={() => void toggleStar({ soulId: soul._id })}
+                  aria-label={isStarred ? 'Unstar soul' : 'Star soul'}
+                >
+                  ★ {isStarred ? 'Starred' : 'Star'}
+                </Button>
+              ) : null}
             </div>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="card">
-          <div className="skill-readme markdown">
+        <Card className="p-6">
+          <div className="markdown">
             {readmeContent ? (
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{readmeContent}</ReactMarkdown>
             ) : readmeError ? (
-              <div className="stat">Failed to load SOUL.md: {readmeError}</div>
+              <div className="text-sm text-muted-foreground">Failed to load SOUL.md: {readmeError}</div>
             ) : (
-              <div className="loading-indicator">Loading SOUL.md…</div>
+              <div className="text-sm text-muted-foreground">Loading SOUL.md…</div>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="card">
-          <h2 className="section-title" style={{ fontSize: '1.2rem', marginBottom: 8 }}>
-            Versions
-          </h2>
-          <div className="version-scroll">
-            <div className="version-list">
-              {(versions ?? []).map((version) => (
-                <div key={version._id} className="version-row">
-                  <div className="version-info">
-                    <div>
-                      v{version.version} · {new Date(version.createdAt).toLocaleDateString()}
-                      {version.changelogSource === 'auto' ? (
-                        <span style={{ color: 'var(--ink-soft)' }}> · auto</span>
-                      ) : null}
-                    </div>
-                    <div style={{ color: '#5c554e', whiteSpace: 'pre-wrap' }}>
-                      {version.changelog}
-                    </div>
-                  </div>
-                  <div className="version-actions">
-                    <a
-                      className="btn version-zip"
-                      href={`${downloadBase}?path=SOUL.md&version=${encodeURIComponent(
-                        version.version,
-                      )}`}
-                    >
-                      SOUL.md
-                    </a>
-                  </div>
+        <Card className="space-y-4 p-6">
+          <h2 className="font-display text-lg font-semibold">Versions</h2>
+          <div className="max-h-[360px] space-y-4 overflow-auto">
+            {(versions ?? []).map((version) => (
+              <div
+                key={version._id}
+                className="flex flex-col gap-2 rounded-[var(--radius)] border border-border p-4"
+              >
+                <div className="text-sm font-medium">
+                  v{version.version} · {new Date(version.createdAt).toLocaleDateString()}
+                  {version.changelogSource === 'auto' ? (
+                    <span className="text-xs text-muted-foreground"> · auto</span>
+                  ) : null}
                 </div>
-              ))}
-            </div>
+                <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                  {version.changelog}
+                </div>
+                <div>
+                  <a
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                    href={`${downloadBase}?path=SOUL.md&version=${encodeURIComponent(
+                      version.version,
+                    )}`}
+                  >
+                    SOUL.md
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </Card>
 
-        <div className="card">
-          <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>
-            Comments
-          </h2>
+        <Card className="space-y-4 p-6">
+          <h2 className="font-display text-lg font-semibold">Comments</h2>
           {isAuthenticated ? (
             <form
               onSubmit={(event) => {
@@ -209,47 +237,48 @@ export function SoulDetailPage({ slug }: SoulDetailPageProps) {
                   setComment(''),
                 )
               }}
-              className="comment-form"
+              className="space-y-3"
             >
-              <textarea
-                className="comment-input"
+              <Textarea
                 rows={4}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 placeholder="Leave a note…"
               />
-              <button className="btn comment-submit" type="submit">
-                Post comment
-              </button>
+              <Button type="submit">Post comment</Button>
             </form>
           ) : (
-            <p className="section-subtitle">Sign in to comment.</p>
+            <p className="text-sm text-muted-foreground">Sign in to comment.</p>
           )}
-          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+          <div className="space-y-3">
             {(comments ?? []).length === 0 ? (
-              <div className="stat">No comments yet.</div>
+              <div className="text-sm text-muted-foreground">No comments yet.</div>
             ) : (
               (comments ?? []).map((entry) => (
-                <div key={entry.comment._id} className="stat" style={{ alignItems: 'flex-start' }}>
-                  <div>
-                    <strong>@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
-                    <div style={{ color: '#5c554e' }}>{entry.comment.body}</div>
+                <div
+                  key={entry.comment._id}
+                  className="flex items-start justify-between gap-4 rounded-[var(--radius)] border border-border p-4"
+                >
+                  <div className="space-y-1">
+                    <strong className="text-sm">@{entry.user?.handle ?? entry.user?.name ?? 'user'}</strong>
+                    <div className="text-sm text-muted-foreground">{entry.comment.body}</div>
                   </div>
                   {isAuthenticated && me && (me._id === entry.comment.userId || isModerator(me)) ? (
-                    <button
-                      className="btn"
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => void removeComment({ commentId: entry.comment._id })}
                     >
                       Delete
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               ))
             )}
           </div>
-        </div>
-      </div>
+        </Card>
+      </PageShell>
     </main>
   )
 }

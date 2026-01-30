@@ -35,7 +35,7 @@ onlycrabs.ai: `https://onlycrabs.ai`
 - Web app: TanStack Start (React, Vite/Nitro).
 - Backend: Convex (DB + file storage + HTTP actions) + Convex Auth (GitHub OAuth).
 - Search: OpenAI embeddings (`text-embedding-3-small`) + Convex vector search.
-- API schema + routes: `packages/schema` (`clawhub-schema`).
+- API schema + routes: `packages/schema` (`molthub-schema`).
 
 ## Telemetry
 

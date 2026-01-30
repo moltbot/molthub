@@ -2,6 +2,12 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAction } from 'convex/react'
 import { useMemo, useState } from 'react'
 import { api } from '../../convex/_generated/api'
+import { PageShell } from '../components/PageShell'
+import { SectionHeader } from '../components/SectionHeader'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
 import { formatBytes } from '../lib/uploadUtils'
 import { useAuthStatus } from '../lib/useAuthStatus'
 
@@ -168,7 +174,10 @@ function ImportGitHub() {
       const nextSlug = result.slug
       setStatus('Imported.')
       const ownerParam = me?.handle ?? (me?._id ? String(me._id) : 'unknown')
-      await navigate({ to: '/$owner/$slug', params: { owner: ownerParam, slug: nextSlug } })
+      await navigate({
+        to: '/skills/$owner/$slug',
+        params: { owner: ownerParam, slug: nextSlug },
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed')
       setStatus(null)
@@ -179,38 +188,37 @@ function ImportGitHub() {
 
   if (!isAuthenticated) {
     return (
-      <main className="section">
-        <div className="card">
-          {isLoading ? 'Loading…' : 'Sign in to import and publish skills.'}
-        </div>
+      <main className="py-10">
+        <PageShell>
+          <Card className="p-6 text-sm text-muted-foreground">
+            {isLoading ? 'Loading…' : 'Sign in to import and publish skills.'}
+          </Card>
+        </PageShell>
       </main>
     )
   }
 
   return (
-    <main className="section upload-shell">
-      <div className="upload-header">
-        <div>
-          <div className="upload-kicker">GitHub import</div>
-          <h1 className="upload-title">Import from GitHub</h1>
-          <p className="upload-subtitle">Public repos only. Detects SKILL.md automatically.</p>
-        </div>
-        <div className="upload-badge">
-          <div>Public only</div>
-          <div className="upload-badge-sub">Commit pinned</div>
-        </div>
-      </div>
-
-      <div className="upload-card">
-        <div className="upload-fields">
-          <label className="upload-field" htmlFor="github-url">
-            <div className="upload-field-header">
-              <strong>GitHub URL</strong>
-              <span className="upload-field-hint">Repo, tree path, or blob</span>
+    <main className="py-10">
+      <PageShell className="space-y-8">
+        <SectionHeader
+          title="Import from GitHub"
+          description="Public repos only. Detects SKILL.md automatically."
+          actions={
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Public only</Badge>
+              <Badge variant="secondary">Commit pinned</Badge>
             </div>
-            <input
+          }
+        />
+
+        <Card className="space-y-4 p-6">
+          <div className="space-y-2">
+            <label className="text-xs font-medium" htmlFor="github-url">
+              GitHub URL
+            </label>
+            <Input
               id="github-url"
-              className="upload-input"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://github.com/owner/repo"
@@ -218,182 +226,156 @@ function ImportGitHub() {
               autoCorrect="off"
               spellCheck={false}
             />
-          </label>
-        </div>
-
-        <div className="upload-footer">
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={!url.trim() || isBusy}
-            onClick={() => void detect()}
-          >
-            Detect
-          </button>
-          {status ? <p className="upload-muted">{status}</p> : null}
-        </div>
-
-        {error ? (
-          <div className="upload-validation">
-            <div className="upload-validation-item upload-error">{error}</div>
           </div>
-        ) : null}
-      </div>
-
-      {candidates.length > 1 ? (
-        <div className="card">
-          <h2 style={{ margin: 0 }}>Pick a skill</h2>
-          <div className="upload-filelist">
-            {candidates.map((candidate) => (
-              <label key={candidate.path} className="upload-file">
-                <input
-                  type="radio"
-                  name="candidate"
-                  checked={selectedCandidatePath === candidate.path}
-                  onChange={() => void loadCandidate(candidate.path)}
-                  disabled={isBusy}
-                />
-                <span className="mono">{candidate.path || '(repo root)'}</span>
-                <span>
-                  {candidate.name
-                    ? candidate.name
-                    : candidate.description
-                      ? candidate.description
-                      : ''}
-                </span>
-              </label>
-            ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" disabled={!url.trim() || isBusy} onClick={() => void detect()}>
+              Detect
+            </Button>
+            {status ? <span className="text-xs text-muted-foreground">{status}</span> : null}
           </div>
-        </div>
-      ) : null}
+          {error ? (
+            <div className="rounded-[var(--radius)] border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          ) : null}
+        </Card>
 
-      {preview ? (
-        <>
-          <div className="upload-card">
-            <div className="upload-grid">
-              <div className="upload-fields">
-                <label className="upload-field" htmlFor="slug">
-                  <div className="upload-field-header">
-                    <strong>Slug</strong>
-                    <span className="upload-field-hint">Unique, lowercase</span>
-                  </div>
+        {candidates.length > 1 ? (
+          <Card className="space-y-3 p-6">
+            <h2 className="font-display text-lg font-semibold">Pick a skill</h2>
+            <div className="space-y-2 text-sm">
+              {candidates.map((candidate) => (
+                <label
+                  key={candidate.path}
+                  className="flex items-center gap-3 rounded-[var(--radius)] border border-border px-3 py-2"
+                >
                   <input
+                    type="radio"
+                    name="candidate"
+                    checked={selectedCandidatePath === candidate.path}
+                    onChange={() => void loadCandidate(candidate.path)}
+                    disabled={isBusy}
+                  />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {candidate.path || '(repo root)'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {candidate.name
+                      ? candidate.name
+                      : candidate.description
+                        ? candidate.description
+                        : ''}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
+        {preview ? (
+          <>
+            <Card className="space-y-4 p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="slug">
+                    Slug
+                  </label>
+                  <Input
                     id="slug"
-                    className="upload-input"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
                   />
-                </label>
-                <label className="upload-field" htmlFor="name">
-                  <div className="upload-field-header">
-                    <strong>Display name</strong>
-                    <span className="upload-field-hint">Shown in listings</span>
-                  </div>
-                  <input
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="name">
+                    Display name
+                  </label>
+                  <Input
                     id="name"
-                    className="upload-input"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                   />
-                </label>
-                <div className="upload-row">
-                  <label className="upload-field" htmlFor="version">
-                    <div className="upload-field-header">
-                      <strong>Version</strong>
-                      <span className="upload-field-hint">Semver</span>
-                    </div>
-                    <input
-                      id="version"
-                      className="upload-input"
-                      value={version}
-                      onChange={(e) => setVersion(e.target.value)}
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                    />
-                  </label>
-                  <label className="upload-field" htmlFor="tags">
-                    <div className="upload-field-header">
-                      <strong>Tags</strong>
-                      <span className="upload-field-hint">Comma-separated</span>
-                    </div>
-                    <input
-                      id="tags"
-                      className="upload-input"
-                      value={tags}
-                      onChange={(e) => setTags(e.target.value)}
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                    />
-                  </label>
                 </div>
-              </div>
-              <aside className="upload-side">
-                <div className="upload-summary">
-                  <div className="upload-requirement ok">Commit pinned</div>
-                  <div className="upload-muted">
-                    {preview.resolved.owner}/{preview.resolved.repo}@
-                    {preview.resolved.commit.slice(0, 7)}
-                  </div>
-                  <div className="upload-muted mono">{preview.candidate.path || 'repo root'}</div>
-                </div>
-              </aside>
-            </div>
-          </div>
-
-          <div className="card">
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <h2 style={{ margin: 0 }}>Files</h2>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button
-                  className="btn"
-                  type="button"
-                  disabled={isBusy}
-                  onClick={applyDefaultSelection}
-                >
-                  Select referenced
-                </button>
-                <button className="btn" type="button" disabled={isBusy} onClick={selectAll}>
-                  Select all
-                </button>
-                <button className="btn" type="button" disabled={isBusy} onClick={clearAll}>
-                  Clear
-                </button>
-              </div>
-            </div>
-            <div className="upload-muted">
-              Selected: {selectedCount}/{preview.files.length} • {formatBytes(selectedBytes)}
-            </div>
-            <div className="file-list">
-              {preview.files.map((file) => (
-                <label key={file.path} className="file-row">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(selected[file.path])}
-                    onChange={() =>
-                      setSelected((prev) => ({ ...prev, [file.path]: !prev[file.path] }))
-                    }
-                    disabled={isBusy}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="version">
+                    Version
+                  </label>
+                  <Input
+                    id="version"
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                   />
-                  <span className="mono file-path">{file.path}</span>
-                  <span className="file-meta">{formatBytes(file.size)}</span>
-                </label>
-              ))}
-            </div>
-            <div className="upload-footer">
-              <button
-                className="btn btn-primary"
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium" htmlFor="tags">
+                    Tags
+                  </label>
+                  <Input
+                    id="tags"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">Commit pinned</Badge>
+                <span>
+                  {preview.resolved.owner}/{preview.resolved.repo}@
+                  {preview.resolved.commit.slice(0, 7)}
+                </span>
+                <span className="font-mono">{preview.candidate.path || 'repo root'}</span>
+              </div>
+            </Card>
+
+            <Card className="space-y-4 p-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h2 className="font-display text-lg font-semibold">Files</h2>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" disabled={isBusy} onClick={applyDefaultSelection}>
+                    Select referenced
+                  </Button>
+                  <Button type="button" variant="outline" disabled={isBusy} onClick={selectAll}>
+                    Select all
+                  </Button>
+                  <Button type="button" variant="outline" disabled={isBusy} onClick={clearAll}>
+                    Clear
+                  </Button>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Selected: {selectedCount}/{preview.files.length} • {formatBytes(selectedBytes)}
+              </div>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                {preview.files.map((file) => (
+                  <label
+                    key={file.path}
+                    className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-border px-3 py-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selected[file.path])}
+                        onChange={() =>
+                          setSelected((prev) => ({ ...prev, [file.path]: !prev[file.path] }))
+                        }
+                        disabled={isBusy}
+                      />
+                      <span className="font-mono text-xs text-muted-foreground">{file.path}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
+                  </label>
+                ))}
+              </div>
+              <Button
                 type="button"
                 disabled={
                   isBusy ||
@@ -405,11 +387,11 @@ function ImportGitHub() {
                 onClick={() => void doImport()}
               >
                 Import + publish
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
+              </Button>
+            </Card>
+          </>
+        ) : null}
+      </PageShell>
     </main>
   )
 }

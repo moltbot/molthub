@@ -47,3 +47,7 @@ export function deriveModerationFlags({
 
   return Array.from(flags)
 }
+
+export function isSkillPublic(skill: Pick<Doc<'skills'>, 'moderationStatus'>) {
+  return !skill.moderationStatus || skill.moderationStatus === 'active'
+}

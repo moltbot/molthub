@@ -1,4 +1,5 @@
 import type { Doc } from '../_generated/dataModel'
+import type { ResourceBadgeMap } from './badges'
 
 export type PublicUser = Pick<
   Doc<'users'>,
@@ -13,15 +14,15 @@ export type PublicSkill = Pick<
   | 'displayName'
   | 'summary'
   | 'ownerUserId'
-  | 'canonicalSkillId'
   | 'forkOf'
   | 'latestVersionId'
   | 'tags'
-  | 'badges'
   | 'stats'
   | 'createdAt'
   | 'updatedAt'
->
+> & {
+  badges?: ResourceBadgeMap
+}
 
 export type PublicSoul = Pick<
   Doc<'souls'>,
@@ -36,7 +37,9 @@ export type PublicSoul = Pick<
   | 'stats'
   | 'createdAt'
   | 'updatedAt'
->
+> & {
+  badges?: ResourceBadgeMap
+}
 
 export function toPublicUser(user: Doc<'users'> | null | undefined): PublicUser | null {
   if (!user || user.deletedAt) return null
@@ -51,7 +54,9 @@ export function toPublicUser(user: Doc<'users'> | null | undefined): PublicUser 
   }
 }
 
-export function toPublicSkill(skill: Doc<'skills'> | null | undefined): PublicSkill | null {
+export function toPublicSkill(
+  skill: (Doc<'skills'> & { badges?: ResourceBadgeMap }) | null | undefined,
+): PublicSkill | null {
   if (!skill || skill.softDeletedAt) return null
   if (skill.moderationStatus && skill.moderationStatus !== 'active') return null
   if (skill.moderationFlags?.includes('blocked.malware')) return null
@@ -62,7 +67,6 @@ export function toPublicSkill(skill: Doc<'skills'> | null | undefined): PublicSk
     displayName: skill.displayName,
     summary: skill.summary,
     ownerUserId: skill.ownerUserId,
-    canonicalSkillId: skill.canonicalSkillId,
     forkOf: skill.forkOf,
     latestVersionId: skill.latestVersionId,
     tags: skill.tags,
@@ -73,7 +77,9 @@ export function toPublicSkill(skill: Doc<'skills'> | null | undefined): PublicSk
   }
 }
 
-export function toPublicSoul(soul: Doc<'souls'> | null | undefined): PublicSoul | null {
+export function toPublicSoul(
+  soul: (Doc<'souls'> & { stats?: Doc<'souls'>['stats']; badges?: ResourceBadgeMap }) | null | undefined,
+): PublicSoul | null {
   if (!soul || soul.softDeletedAt) return null
   return {
     _id: soul._id,
@@ -85,6 +91,7 @@ export function toPublicSoul(soul: Doc<'souls'> | null | undefined): PublicSoul 
     latestVersionId: soul.latestVersionId,
     tags: soul.tags,
     stats: soul.stats,
+    badges: soul.badges,
     createdAt: soul.createdAt,
     updatedAt: soul.updatedAt,
   }
