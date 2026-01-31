@@ -31,4 +31,11 @@ crons.interval(
   {},
 )
 
+crons.interval(
+  'global-stats-update',
+  { minutes: 60 },
+  internal.statsMaintenance.updateGlobalStatsInternal,
+  {},
+)
+
 export default crons

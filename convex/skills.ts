@@ -162,7 +162,8 @@ async function hardDeleteSkill(
     if (related._id === skill._id) continue
     if (related.canonicalSkillId === skill._id || related.forkOf?.skillId === skill._id) {
       await ctx.db.patch(related._id, {
-        canonicalSkillId: related.canonicalSkillId === skill._id ? undefined : related.canonicalSkillId,
+        canonicalSkillId:
+          related.canonicalSkillId === skill._id ? undefined : related.canonicalSkillId,
         forkOf: related.forkOf?.skillId === skill._id ? undefined : related.forkOf,
         updatedAt: now,
       })
@@ -737,6 +738,17 @@ export const listPublicPageV2 = query({
       ...result,
       page: items,
     }
+  },
+})
+
+export const countPublicSkills = query({
+  args: {},
+  handler: async (ctx) => {
+    const stats = await ctx.db
+      .query('globalStats')
+      .withIndex('by_key', (q) => q.eq('key', 'default'))
+      .unique()
+    return stats?.activeSkillsCount ?? 0
   },
 })
 

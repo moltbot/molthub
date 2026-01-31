@@ -203,3 +203,30 @@ function buildSkillStatPatch(skill: Doc<'skills'>) {
 function clampInt(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
+
+export const updateGlobalStatsInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const skills = await ctx.db
+      .query('skills')
+      .withIndex('by_active_updated', (q) => q.eq('softDeletedAt', undefined))
+      .collect()
+
+    const count = skills.length
+    const now = Date.now()
+    const existing = await ctx.db
+      .query('globalStats')
+      .withIndex('by_key', (q) => q.eq('key', 'default'))
+      .unique()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { activeSkillsCount: count, updatedAt: now })
+    } else {
+      await ctx.db.insert('globalStats', {
+        key: 'default',
+        activeSkillsCount: count,
+        updatedAt: now,
+      })
+    }
+  },
+})
