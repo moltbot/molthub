@@ -8,6 +8,7 @@
 - Uploads: require GitHub accounts to be at least 7 days old for skill + soul publish/import.
 - CLI: add `inspect` to fetch skill metadata/files without installing.
 - CLI: add moderation commands for hide/unhide/delete and ban users.
+- Management: add filters for reported skills and users.
 
 ### Changed
 - Deps: update dependencies to latest available versions.

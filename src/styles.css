@@ -2687,6 +2687,15 @@ html.theme-transition::view-transition-new(theme) {
   min-width: 180px;
 }
 
+.management-search input {
+  min-width: 240px;
+}
+
+.management-count {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
 .management-sublist {
   display: grid;
   gap: 8px;
