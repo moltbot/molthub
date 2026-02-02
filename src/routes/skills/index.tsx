@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useAction } from 'convex/react'
+import { useAction, useQuery } from 'convex/react'
 import { usePaginatedQuery } from 'convex-helpers/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../convex/_generated/api'
@@ -73,6 +73,7 @@ export function SkillsIndex() {
   const [isSearching, setIsSearching] = useState(false)
   const searchRequest = useRef(0)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const totalSkills = useQuery(api.skills.countPublicSkills)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const trimmedQuery = useMemo(() => query.trim(), [query])
@@ -225,7 +226,8 @@ export function SkillsIndex() {
       <header className="skills-header">
         <div>
           <h1 className="section-title" style={{ marginBottom: 8 }}>
-            Skills
+            Skills{' '}
+            {totalSkills !== undefined && <span style={{ opacity: 0.5 }}>{totalSkills}</span>}
           </h1>
           <p className="section-subtitle" style={{ marginBottom: 0 }}>
             {isLoadingSkills

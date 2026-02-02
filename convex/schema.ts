@@ -272,6 +272,12 @@ const skillStatBackfillState = defineTable({
   updatedAt: v.number(),
 }).index('by_key', ['key'])
 
+const globalStats = defineTable({
+  key: v.string(),
+  activeSkillsCount: v.number(),
+  updatedAt: v.number(),
+}).index('by_key', ['key'])
+
 const skillStatEvents = defineTable({
   skillId: v.id('skills'),
   kind: v.union(
@@ -462,6 +468,7 @@ export default defineSchema({
   skillDailyStats,
   skillLeaderboards,
   skillStatBackfillState,
+  globalStats,
   skillStatEvents,
   skillStatUpdateCursors,
   comments,

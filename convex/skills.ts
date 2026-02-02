@@ -907,6 +907,17 @@ export const listPublicPageV2 = query({
   },
 })
 
+export const countPublicSkills = query({
+  args: {},
+  handler: async (ctx) => {
+    const stats = await ctx.db
+      .query('globalStats')
+      .withIndex('by_key', (q) => q.eq('key', 'default'))
+      .unique()
+    return stats?.activeSkillsCount ?? 0
+  },
+})
+
 function sortToIndex(
   sort: 'downloads' | 'stars' | 'installsCurrent' | 'installsAllTime',
 ):
