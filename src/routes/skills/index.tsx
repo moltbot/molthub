@@ -161,6 +161,9 @@ export function SkillsIndex() {
   )
 
   const sorted = useMemo(() => {
+    if (!hasQuery) {
+      return filtered
+    }
     const multiplier = dir === 'asc' ? 1 : -1
     const results = [...filtered]
     results.sort((a, b) => {
@@ -186,7 +189,7 @@ export function SkillsIndex() {
       }
     })
     return results
-  }, [dir, filtered, sort])
+  }, [dir, filtered, hasQuery, sort])
 
   const isLoadingSkills = hasQuery ? isSearching && searchResults.length === 0 : isLoadingList
   const canLoadMore = hasQuery

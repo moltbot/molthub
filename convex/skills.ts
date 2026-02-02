@@ -171,7 +171,8 @@ async function hardDeleteSkill(
     if (related._id === skill._id) continue
     if (related.canonicalSkillId === skill._id || related.forkOf?.skillId === skill._id) {
       await ctx.db.patch(related._id, {
-        canonicalSkillId: related.canonicalSkillId === skill._id ? undefined : related.canonicalSkillId,
+        canonicalSkillId:
+          related.canonicalSkillId === skill._id ? undefined : related.canonicalSkillId,
         forkOf: related.forkOf?.skillId === skill._id ? undefined : related.forkOf,
         updatedAt: now,
       })
@@ -743,7 +744,7 @@ export const listPublicPageV2 = query({
   },
   handler: async (ctx, args) => {
     const sort = args.sort ?? 'newest'
-    const dir = args.dir ?? 'desc'
+    const dir = args.dir ?? (sort === 'name' ? 'asc' : 'desc')
 
     // Use the index to filter out soft-deleted skills at query time.
     // softDeletedAt === undefined means active (non-deleted) skills only.
