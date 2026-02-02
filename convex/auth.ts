@@ -42,10 +42,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 
       // Soft-deleted user attempting to sign in - check if banned or self-deleted
       // Uses the by_target index for efficient lookup (not a full table scan)
+      // Note: targetId is stored as v.string() in schema, so convert userId explicitly
       const banRecord = await ctx.db
         .query('auditLogs')
         .withIndex('by_target', (q) =>
-          q.eq('targetType', 'user').eq('targetId', userId)
+          q.eq('targetType', 'user').eq('targetId', userId.toString())
         )
         .filter((q) => q.eq(q.field('action'), 'user.ban'))
         .first()
