@@ -4,7 +4,6 @@ import type { ActionCtx } from '../_generated/server'
 
 const SCANNER_URL = 'https://api.clawscanner.xyz'
 
-
 export type ScanVerdict = 'clean' | 'flagged' | 'blocked'
 
 export type ScanFinding = {
@@ -43,21 +42,9 @@ export async function scanSkillFiles(
   ctx: ActionCtx,
   files: SkillFileForScan[],
 ): Promise<ScanResult> {
-  if (!SCANNER_URL) {
-    console.warn('ClawScanner not configured, skipping security scan')
-    return {
-      verdict: 'clean',
-      findings: [],
-      scanned_at: new Date().toISOString(),
-      duration_ms: 0,
-      files_scanned: 0,
-      scanner_version: 'disabled',
-      summary: { critical: 0, high: 0, total: 0 },
-    }
-  }
-
   try {
     const formData = new FormData()
+    let filesAdded = 0
 
     for (const file of files) {
       const blob = await ctx.storage.get(file.storageId)
@@ -67,6 +54,11 @@ export async function scanSkillFiles(
       }
 
       formData.append('files', blob, file.path)
+      filesAdded++
+    }
+
+    if (filesAdded === 0) {
+      throw new Error('No files available for scanning')
     }
 
     const response = await fetch(`${SCANNER_URL}/api/scan`, {

@@ -114,9 +114,12 @@ export async function publishVersionForUser(
     if (otherFiles.length >= MAX_FILES_FOR_EMBEDDING) break
   }
 
-
   const scanResult = await scanSkillFiles(ctx, safeFiles)
-  handleScanResult(scanResult)
+  const securityFlags = handleScanResult(scanResult)
+
+  if (securityFlags.length > 0) {
+    console.warn(`[Security] Skill ${slug} flagged for review: ${securityFlags.join(', ')}`)
+  }
 
   const embeddingText = buildEmbeddingText({
     frontmatter,
