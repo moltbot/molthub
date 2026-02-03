@@ -17,6 +17,8 @@ const users = defineTable({
   displayName: v.optional(v.string()),
   bio: v.optional(v.string()),
   role: v.optional(v.union(v.literal('admin'), v.literal('moderator'), v.literal('user'))),
+  githubCreatedAt: v.optional(v.number()),
+  githubFetchedAt: v.optional(v.number()),
   deletedAt: v.optional(v.number()),
   createdAt: v.optional(v.number()),
   updatedAt: v.optional(v.number()),
@@ -112,6 +114,8 @@ const skills = defineTable({
   .index('by_active_stats_downloads', ['softDeletedAt', 'statsDownloads', 'updatedAt'])
   .index('by_active_stats_stars', ['softDeletedAt', 'statsStars', 'updatedAt'])
   .index('by_active_stats_installs_all_time', ['softDeletedAt', 'statsInstallsAllTime', 'updatedAt'])
+  .index('by_canonical', ['canonicalSkillId'])
+  .index('by_fork_of', ['forkOf.skillId'])
 
 const souls = defineTable({
   slug: v.string(),
@@ -340,6 +344,7 @@ const skillReports = defineTable({
   createdAt: v.number(),
 })
   .index('by_skill', ['skillId'])
+  .index('by_skill_createdAt', ['skillId', 'createdAt'])
   .index('by_user', ['userId'])
   .index('by_skill_user', ['skillId', 'userId'])
 
