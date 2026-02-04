@@ -32,6 +32,11 @@ import {
   usersListV1Http,
   whoamiV1Http,
 } from './httpApiV1'
+import { corsPreflightResponse } from './lib/cors'
+import { httpAction } from './_generated/server'
+
+// CORS preflight handler for browser clients
+const corsPreflightHttp = httpAction(async () => corsPreflightResponse())
 
 const http = httpRouter()
 
@@ -203,6 +208,13 @@ http.route({
   path: LegacyApiRoutes.cliSkillUndelete,
   method: 'POST',
   handler: cliSkillUndeleteHttp,
+})
+
+// CORS preflight handler for all API routes
+http.route({
+  pathPrefix: '/api/',
+  method: 'OPTIONS',
+  handler: corsPreflightHttp,
 })
 
 export default http
