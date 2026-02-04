@@ -1,8 +1,27 @@
 import { v } from 'convex/values'
 import { zipSync } from 'fflate'
-import { api } from './_generated/api'
+import { api, internal } from './_generated/api'
 import { httpAction, mutation } from './_generated/server'
 import { insertStatEvent } from './skillStatEvents'
+
+// Rate limit: 5 downloads per skill per IP per hour
+// NOTE: This is defense-in-depth only. Download counts are fundamentally ungameable
+// as a trust metric because:
+//   1. Downloads are anonymous (no auth required)
+//   2. Attackers can use proxies/VPNs/Tor to bypass IP rate limits
+//   3. Even legitimate rate limiting can be circumvented at scale
+//
+// RECOMMENDATION: De-emphasize download counts in the UI. Stars and installs
+// are better trust signals because they require authenticated sessions.
+// Consider showing "X users installed" (from CLI telemetry) rather than downloads.
+const DOWNLOAD_RATE_LIMIT = 5
+const DOWNLOAD_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
+// Only trust cf-connecting-ip - other headers like x-forwarded-for are spoofable
+function getClientIpSecure(request: Request): string | null {
+  const cfIp = request.headers.get('cf-connecting-ip')
+  return cfIp?.trim() || null
+}
 
 export const downloadZip = httpAction(async (ctx, request) => {
   const url = new URL(request.url)
@@ -53,7 +72,21 @@ export const downloadZip = httpAction(async (ctx, request) => {
   const zipArray = Uint8Array.from(zipData)
   const zipBlob = new Blob([zipArray], { type: 'application/zip' })
 
-  await ctx.runMutation(api.downloads.increment, { skillId: skill._id })
+  // Only count download if IP passes rate limit check
+  const clientIp = getClientIpSecure(request)
+  if (clientIp) {
+    const rateLimitKey = `download:${skill._id}:${clientIp}`
+    const rateCheck = await ctx.runMutation(internal.rateLimits.checkRateLimitInternal, {
+      key: rateLimitKey,
+      limit: DOWNLOAD_RATE_LIMIT,
+      windowMs: DOWNLOAD_RATE_WINDOW_MS,
+    })
+    if (rateCheck.allowed) {
+      await ctx.runMutation(api.downloads.increment, { skillId: skill._id })
+    }
+    // If rate limited, still serve the file but don't count it
+  }
+  // If no IP (shouldn't happen on Cloudflare), don't count the download
 
   return new Response(zipBlob, {
     status: 200,
