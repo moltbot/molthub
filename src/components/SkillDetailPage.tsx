@@ -104,20 +104,7 @@ function SecurityScanResults({
 }) {
   const { result, loading } = useSecurityScan(sha256hash)
 
-  if (!sha256hash) {
-    if (variant === 'badge') return null
-    return (
-      <div className="scan-results-panel">
-        <div className="scan-result-row">
-          <div className="scan-result-scanner">
-            <VirusTotalIcon className="scan-result-icon scan-result-icon-vt" />
-            <span className="scan-result-scanner-name">VirusTotal</span>
-          </div>
-          <div className="scan-result-status scan-status-pending">No hash available</div>
-        </div>
-      </div>
-    )
-  }
+  if (!sha256hash) return null
 
   const status = loading ? 'pending' : (result?.status ?? 'pending')
   const url = result?.url

@@ -112,14 +112,19 @@ export const scanWithVirusTotal = internalAction({
     })
     const owner = skill
       ? await ctx.runQuery(internal.users.getByIdInternal, {
-          userId: skill.ownerUserId,
-        })
+        userId: skill.ownerUserId,
+      })
       : null
     const versions = skill
       ? await ctx.runQuery(internal.skills.listVersionsInternal, {
-          skillId: skill._id,
-        })
+        skillId: skill._id,
+      })
       : []
+
+    // Helper to get commit URL or placeholder
+    const getCommit = () => {
+      return 'https://github.com/clawdbot/skills'
+    }
 
     // Build the ZIP in memory with deterministic settings
     // Sort files alphabetically by path for consistent order
@@ -148,14 +153,14 @@ export const scanWithVirusTotal = internalAction({
         latest: {
           version: version.version,
           publishedAt: version.createdAt,
-          commit: null,
+          commit: getCommit(),
         },
         history: versions
           .filter((v: { version: string }) => v.version !== version.version)
-          .map((v: { version: string; createdAt: number }) => ({
+          .map((v: any) => ({
             version: v.version,
             publishedAt: v.createdAt,
-            commit: null,
+            commit: getCommit(),
           }))
           .sort(
             (a: { publishedAt: number }, b: { publishedAt: number }) =>
