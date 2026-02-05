@@ -14,7 +14,7 @@ onlycrabs.ai is the **SOUL.md registry**: publish and share system lore the same
 Live: `https://clawhub.ai`
 onlycrabs.ai: `https://onlycrabs.ai`
 
-## What you can do
+## What you can do with it
 
 - Browse skills + render their `SKILL.md`.
 - Publish new skill versions with changelogs + tags (including `latest`).
