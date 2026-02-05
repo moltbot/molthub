@@ -21,6 +21,7 @@ import {
 import { getRegistry } from '../registry.js'
 import type { GlobalOpts, ResolveResult } from '../types.js'
 import { createSpinner, fail, formatError, isInteractive, promptConfirm } from '../ui.js'
+import { readGlobalConfig } from '../../config.js'
 
 export async function cmdSearch(opts: GlobalOpts, query: string, limit?: number) {
   if (!query) fail('Query required')
@@ -61,6 +62,9 @@ export async function cmdInstall(
   const trimmed = slug.trim()
   if (!trimmed) fail('Slug required')
 
+  const cfg = await readGlobalConfig()
+  const token = cfg?.token ?? undefined
+
   const registry = await getRegistry(opts, { cache: true })
   await mkdir(opts.dir, { recursive: true })
   const target = join(opts.dir, trimmed)
@@ -78,7 +82,7 @@ export async function cmdInstall(
       (
         await apiRequest(
           registry,
-          { method: 'GET', path: `${ApiRoutes.skills}/${encodeURIComponent(trimmed)}` },
+          { method: 'GET', path: `${ApiRoutes.skills}/${encodeURIComponent(trimmed)}`, token },
           ApiV1SkillResponseSchema,
         )
       ).latestVersion?.version ??
@@ -86,7 +90,7 @@ export async function cmdInstall(
     if (!resolvedVersion) fail('Could not resolve latest version')
 
     spinner.text = `Downloading ${trimmed}@${resolvedVersion}`
-    const zip = await downloadZip(registry, { slug: trimmed, version: resolvedVersion })
+    const zip = await downloadZip(registry, { slug: trimmed, version: resolvedVersion, token })
     await extractZipToDir(zip, target)
 
     await writeSkillOrigin(target, {

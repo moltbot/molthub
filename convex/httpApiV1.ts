@@ -393,6 +393,7 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       // reading localStorage tokens on this origin.
       'Content-Security-Policy':
         "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      'Access-Control-Allow-Origin': '*',
       ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
@@ -1148,6 +1149,7 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
       // reading localStorage tokens on this origin.
       'Content-Security-Policy':
         "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      'Access-Control-Allow-Origin': '*',
       ...(isSvg ? { 'Content-Disposition': 'attachment' } : {}),
     })
     return new Response(textContent, { status: 200, headers })
