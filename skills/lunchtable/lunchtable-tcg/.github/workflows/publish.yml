@@ -1,0 +1,92 @@
+name: Publish to ClawHub
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" =~ refs/tags/v(.+) ]]; then
+            echo "version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          else
+            echo "version=1.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate skill structure
+        working-directory: skills/lunchtable/lunchtable-tcg
+        run: |
+          chmod +x .validate.sh
+          bash .validate.sh
+
+      - name: Install ClawHub CLI
+        run: npm install -g @clawhub/cli
+
+      - name: Authenticate with ClawHub
+        run: clawhub login --token ${{ secrets.CLAWHUB_TOKEN }}
+
+      - name: Submit to ClawHub
+        working-directory: skills/lunchtable/lunchtable-tcg
+        run: |
+          echo "Submitting LunchTable-TCG v${{ steps.version.outputs.version }} to ClawHub..."
+          clawhub submit .
+
+      - name: Publish to npm (optional)
+        if: secrets.NPM_TOKEN != ''
+        working-directory: skills/lunchtable/lunchtable-tcg
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: LunchTable-TCG ${{ steps.version.outputs.version }}
+          body: |
+            ## Installation
+
+            ```bash
+            openclaw skill install lunchtable-tcg
+            ```
+
+            Or via npm:
+            ```bash
+            openclaw skill add @lunchtable/openclaw-skill-ltcg
+            ```
+
+            ## What's Changed
+
+            See [CHANGELOG.md](skills/lunchtable/lunchtable-tcg/CHANGELOG.md) for details.
+          draft: false
+          prerelease: false
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Successfully published to ClawHub!"
+          echo "View at: https://clawhub.com/skills/lunchtable/lunchtable-tcg"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Publication failed. Check logs above."
+          exit 1

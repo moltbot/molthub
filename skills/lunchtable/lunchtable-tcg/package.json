@@ -1,0 +1,14 @@
+{
+  "name": "@lunchtable/openclaw-skill-ltcg",
+  "version": "1.0.0",
+  "description": "OpenClaw skill for playing LunchTable-TCG",
+  "main": "SKILL.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lunchtable/ltcg",
+    "directory": "skills/lunchtable/lunchtable-tcg"
+  },
+  "keywords": ["openclaw", "skill", "tcg", "trading-card-game", "game"],
+  "author": "LunchTable Team",
+  "license": "MIT"
+}
