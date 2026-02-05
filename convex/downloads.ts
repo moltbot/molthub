@@ -64,6 +64,7 @@ export const downloadZip = httpAction(async (ctx, request) => {
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="${slug}-${version.version}.zip"`,
       'Cache-Control': 'private, max-age=60',
+      'Access-Control-Allow-Origin': '*',
     },
   })
 })
