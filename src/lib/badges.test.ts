@@ -1,12 +1,7 @@
 /* @vitest-environment node */
 
 import { describe, expect, it } from 'vitest'
-import {
-  getSkillBadges,
-  isSkillDeprecated,
-  isSkillHighlighted,
-  isSkillOfficial,
-} from './badges'
+import { getSkillBadges, isSkillDeprecated, isSkillHighlighted, isSkillOfficial } from './badges'
 
 describe('badges', () => {
   describe('isSkillHighlighted', () => {
