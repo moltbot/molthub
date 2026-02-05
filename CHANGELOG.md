@@ -5,8 +5,10 @@
 ### Added
 - CLI/API: add `set-role` to change user roles (admin only).
 - Security: quarantine skill publishes with VirusTotal scans + UI (thanks @aleph8, #130).
+- Testing: add tests for badges, skillZip, uploadFiles expandDroppedItems, and ark schema error truncation.
 
 ### Changed
+- Coverage: track `convex/lib/skillZip.ts` in coverage reports.
 
 ### Fixed
 
