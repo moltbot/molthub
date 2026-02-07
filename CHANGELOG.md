@@ -14,6 +14,7 @@
 - Web: show pending-scan skills to owners without 404 (thanks @orlyjamie, #136).
 - Users: backfill empty handles from name/email in ensure (thanks @adlai88, #158).
 - Web: update footer branding to OpenClaw (thanks @jontsai, #122).
+- Auth: restore soft-deleted users on reauth, block banned users (thanks @mkrokosz, #106).
 
 ## 0.5.1 - TBD
 

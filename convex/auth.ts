@@ -1,6 +1,36 @@
 import GitHub from '@auth/core/providers/github'
 import { convexAuth } from '@convex-dev/auth/server'
-import { Id } from './_generated/dataModel'
+import type { GenericMutationCtx } from 'convex/server'
+import { ConvexError } from 'convex/values'
+import type { DataModel, Id } from './_generated/dataModel'
+
+export const BANNED_REAUTH_MESSAGE = 'Your account has been suspended.'
+
+export async function handleSoftDeletedUserReauth(
+  ctx: GenericMutationCtx<DataModel>,
+  args: { userId: Id<'users'>; existingUserId: Id<'users'> | null },
+) {
+  if (!args.existingUserId) return
+
+  const user = await ctx.db.get(args.userId)
+  if (!user?.deletedAt) return
+
+  const userId = args.userId
+  const banRecord = await ctx.db
+    .query('auditLogs')
+    .withIndex('by_target', (q) => q.eq('targetType', 'user').eq('targetId', userId.toString()))
+    .filter((q) => q.eq(q.field('action'), 'user.ban'))
+    .first()
+
+  if (banRecord) {
+    throw new ConvexError(BANNED_REAUTH_MESSAGE)
+  }
+
+  await ctx.db.patch(userId, {
+    deletedAt: undefined,
+    updatedAt: Date.now(),
+  })
+}
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
@@ -26,43 +56,8 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
      * sign in (user.deletedAt is set). For normal active users, this is
      * just a single `if` check on an already-loaded field - no extra queries.
      */
-    async createOrUpdateUser(ctx, args) {
-      // New user - let Convex Auth handle creation with default behavior
-      if (!args.existingUserId) {
-        return null
-      }
-
-      const userId = args.existingUserId as Id<'users'>
-      const user = await ctx.db.get(userId)
-
-      // Active user - normal sign-in, no additional processing needed
-      if (!user?.deletedAt) {
-        return args.existingUserId
-      }
-
-      // Soft-deleted user attempting to sign in - check if banned or self-deleted
-      // Uses the by_target index for efficient lookup (not a full table scan)
-      // Note: targetId is stored as v.string() in schema, so convert userId explicitly
-      const banRecord = await ctx.db
-        .query('auditLogs')
-        .withIndex('by_target', (q) =>
-          q.eq('targetType', 'user').eq('targetId', userId.toString())
-        )
-        .filter((q) => q.eq(q.field('action'), 'user.ban'))
-        .first()
-
-      if (banRecord) {
-        // User was banned by a moderator - do NOT restore
-        throw new Error('This account has been suspended')
-      }
-
-      // User self-deleted their account - restore it
-      await ctx.db.patch(userId, {
-        deletedAt: undefined,
-        updatedAt: Date.now(),
-      })
-
-      return args.existingUserId
+    async afterUserCreatedOrUpdated(ctx, args) {
+      await handleSoftDeletedUserReauth(ctx, args)
     },
   },
 })
