@@ -1,1 +1,233 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiIK5Lit5Zu96ZO26KGM6IKh5YiG5p6Q5oql5ZGKCuWIhuaekOS4u+imgeWbveacieWkp+ihjOeahOihjOaDheOAgeS8sOWAvOWSjOWIhue6ouaDheWGtQoiIiIKCmltcG9ydCBzeXMKaW1wb3J0IHBhbmRhcyBhcyBwZApmcm9tIGRhdGV0aW1lIGltcG9ydCBkYXRldGltZSwgdGltZWRlbHRhCgojIOS4u+imgeWbveaciemTtuihjOiCoeS7o+eggQpCQU5LX1NUT0NLUyA9IHsKICAgICc2MDEzOTguU0gnOiAn5bel5ZWG6ZO26KGMJywKICAgICc2MDE5MzkuU0gnOiAn5bu66K6+6ZO26KGMJywgCiAgICAnNjAxMjg4LlNIJzogJ+WGnOS4mumTtuihjCcsCiAgICAnNjAxOTg4LlNIJzogJ+S4reWbvemTtuihjCcsCiAgICAnNjAxMzI4LlNIJzogJ+S6pOmAmumTtuihjCcsCiAgICAnNjAxNjU4LlNIJzogJ+mCruWCqOmTtuihjCcKfQoKZGVmIGNoZWNrX3R1c2hhcmUoKToKICAgICIiIuajgOafpSB0dXNoYXJlIOaYr+WQpuWuieijhSIiIgogICAgdHJ5OgogICAgICAgIGltcG9ydCB0dXNoYXJlIGFzIHRzCiAgICAgICAgcmV0dXJuIHRzCiAgICBleGNlcHQgSW1wb3J0RXJyb3I6CiAgICAgICAgcHJpbnQoIuivt+WFiOWuieijhSB0dXNoYXJlOiBwaXAgaW5zdGFsbCB0dXNoYXJlIikKICAgICAgICBzeXMuZXhpdCgxKQoKZGVmIGdldF90b2tlbigpOgogICAgIiIi6I635Y+WIFR1c2hhcmUgVG9rZW4iIiIKICAgIGltcG9ydCBvcwogICAgdG9rZW4gPSBvcy5nZXRlbnYoJ1RVU0hBUkVfVE9LRU4nKQogICAgcmV0dXJuIHRva2VuCgpkZWYgYW5hbHl6ZV9iYW5rX3N0b2Nrcyh0cyk6CiAgICAiIiLliIbmnpDpk7booYzogqHmoLjlv4PmlbDmja4iIiIKICAgIHBybyA9IHRzLnByb19hcGkoKQogICAgCiAgICAjIOiOt+WPluacgOi/keS4gOS4quS6pOaYk+aXpQogICAgdG9kYXkgPSBkYXRldGltZS5ub3coKQogICAgZW5kX2RhdGUgPSB0b2RheS5zdHJmdGltZSgnJVklbSVkJykKICAgIHN0YXJ0X2RhdGUgPSAodG9kYXkgLSB0aW1lZGVsdGEoZGF5cz0zMCkpLnN0cmZ0aW1lKCclWSVtJWQnKQogICAgCiAgICAjIOiOt+WPluacgOaWsOavj+aXpeaMh+agh+aVsOaNrgogICAgc3RvY2tfY29kZXMgPSAnLCcuam9pbihCQU5LX1NUT0NLUy5rZXlzKCkpCiAgICAKICAgIHByaW50KCI9IiAqIDgwKQogICAgcHJpbnQoZiLkuK3lm73pk7booYzogqHliIbmnpDmiqXlkYogLSDmlbDmja7ml6XmnJ86IHt0b2RheS5zdHJmdGltZSgnJVktJW0tJWQnKX0iKQogICAgcHJpbnQoIj0iICogODApCiAgICAKICAgICMgMS4g6I635Y+W5pyA5paw5Lyw5YC85oyH5qCHCiAgICBwcmludCgiXG7jgJDkuIDjgIHmnIDmlrDkvLDlgLzmjIfmoIfjgJEiKQogICAgcHJpbnQoIi0iICogODApCiAgICAKICAgIHRyeToKICAgICAgICBkYWlseV9iYXNpYyA9IHByby5kYWlseV9iYXNpYyh0c19jb2RlPXN0b2NrX2NvZGVzLCB0cmFkZV9kYXRlPScnKQogICAgICAgIGlmIGRhaWx5X2Jhc2ljIGlzIG5vdCBOb25lIGFuZCBsZW4oZGFpbHlfYmFzaWMpID4gMDoKICAgICAgICAgICAgIyDojrflj5bmnIDmlrDml6XmnJ8KICAgICAgICAgICAgbGF0ZXN0X2RhdGUgPSBkYWlseV9iYXNpY1sndHJhZGVfZGF0ZSddLm1heCgpCiAgICAgICAgICAgIGxhdGVzdF9kYXRhID0gZGFpbHlfYmFzaWNbZGFpbHlfYmFzaWNbJ3RyYWRlX2RhdGUnXSA9PSBsYXRlc3RfZGF0ZV0uY29weSgpCiAgICAgICAgICAgIAogICAgICAgICAgICBsYXRlc3RfZGF0YVsn6IKh56Wo5ZCN56ewJ10gPSBsYXRlc3RfZGF0YVsndHNfY29kZSddLm1hcChCQU5LX1NUT0NLUykKICAgICAgICAgICAgbGF0ZXN0X2RhdGFbJ+aUtuebmOS7tyddID0gbGF0ZXN0X2RhdGFbJ2Nsb3NlJ10ucm91bmQoMikKICAgICAgICAgICAgbGF0ZXN0X2RhdGFbJ1BFX1RUTSddID0gbGF0ZXN0X2RhdGFbJ3BlX3R0bSddLnJvdW5kKDIpCiAgICAgICAgICAgIGxhdGVzdF9kYXRhWydQQiddID0gbGF0ZXN0X2RhdGFbJ3BiJ10ucm91bmQoMikKICAgICAgICAgICAgbGF0ZXN0X2RhdGFbJ+iCoeaBr+eOhyglKSddID0gbGF0ZXN0X2RhdGFbJ2R2X3R0bSddLnJvdW5kKDIpCiAgICAgICAgICAgIGxhdGVzdF9kYXRhWyfmgLvluILlgLwo5Lq/KSddID0gKGxhdGVzdF9kYXRhWyd0b3RhbF9tdiddIC8gMTAwMDApLnJvdW5kKDIpCiAgICAgICAgICAgIGxhdGVzdF9kYXRhWyfmtYHpgJrluILlgLwo5Lq/KSddID0gKGxhdGVzdF9kYXRhWydjaXJjX212J10gLyAxMDAwMCkucm91bmQoMikKICAgICAgICAgICAgCiAgICAgICAgICAgIGRpc3BsYXlfY29scyA9IFsn6IKh56Wo5ZCN56ewJywgJ+aUtuebmOS7tycsICdQRV9UVE0nLCAnUEInLCAn6IKh5oGv546HKCUpJywgJ+aAu+W4guWAvCjkur8pJywgJ+a1gemAmuW4guWAvCjkur8pJ10KICAgICAgICAgICAgcmVzdWx0X2RmID0gbGF0ZXN0X2RhdGFbZGlzcGxheV9jb2xzXS5zb3J0X3ZhbHVlcygn5oC75biC5YC8KOS6vyknLCBhc2NlbmRpbmc9RmFsc2UpCiAgICAgICAgICAgIHByaW50KHJlc3VsdF9kZi50b19zdHJpbmcoaW5kZXg9RmFsc2UpKQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIHByaW50KCLml6Dms5Xojrflj5bmnIDmlrDkvLDlgLzmlbDmja4iKQogICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgIHByaW50KGYi6I635Y+W5Lyw5YC85pWw5o2u5aSx6LSlOiB7ZX0iKQogICAgCiAgICAjIDIuIOiOt+WPluacgOaWsOihjOaDhQogICAgcHJpbnQoIlxu44CQ5LqM44CB5pyA5paw6KGM5oOF44CRIikKICAgIHByaW50KCItIiAqIDgwKQogICAgCiAgICB0cnk6CiAgICAgICAgbGF0ZXN0X3RyYWRlID0gcHJvLnRyYWRlX2NhbChleGNoYW5nZT0nU1NFJywgc3RhcnRfZGF0ZT1lbmRfZGF0ZSwgZW5kX2RhdGU9ZW5kX2RhdGUsIGlzX29wZW49JzEnKQogICAgICAgIGlmIGxlbihsYXRlc3RfdHJhZGUpID4gMDoKICAgICAgICAgICAgdHJhZGVfZGF0ZSA9IGxhdGVzdF90cmFkZS5pbG9jWzBdWydjYWxfZGF0ZSddCiAgICAgICAgZWxzZToKICAgICAgICAgICAgIyDlvoDliY3mib7kuqTmmJPml6UKICAgICAgICAgICAgZm9yIGkgaW4gcmFuZ2UoMSwgMTApOgogICAgICAgICAgICAgICAgY2hlY2tfZGF0ZSA9ICh0b2RheSAtIHRpbWVkZWx0YShkYXlzPWkpKS5zdHJmdGltZSgnJVklbSVkJykKICAgICAgICAgICAgICAgIGxhdGVzdF90cmFkZSA9IHByby50cmFkZV9jYWwoZXhjaGFuZ2U9J1NTRScsIHN0YXJ0X2RhdGU9Y2hlY2tfZGF0ZSwgZW5kX2RhdGU9Y2hlY2tfZGF0ZSwgaXNfb3Blbj0nMScpCiAgICAgICAgICAgICAgICBpZiBsZW4obGF0ZXN0X3RyYWRlKSA+IDA6CiAgICAgICAgICAgICAgICAgICAgdHJhZGVfZGF0ZSA9IGNoZWNrX2RhdGUKICAgICAgICAgICAgICAgICAgICBicmVhawogICAgICAgIAogICAgICAgIGRhaWx5ID0gcHJvLmRhaWx5KHRzX2NvZGU9c3RvY2tfY29kZXMsIHRyYWRlX2RhdGU9dHJhZGVfZGF0ZSkKICAgICAgICBpZiBkYWlseSBpcyBub3QgTm9uZSBhbmQgbGVuKGRhaWx5KSA+IDA6CiAgICAgICAgICAgIGRhaWx5WyfogqHnpajlkI3np7AnXSA9IGRhaWx5Wyd0c19jb2RlJ10ubWFwKEJBTktfU1RPQ0tTKQogICAgICAgICAgICBkYWlseVsn5byA55uY5Lu3J10gPSBkYWlseVsnb3BlbiddLnJvdW5kKDIpCiAgICAgICAgICAgIGRhaWx5WyfmnIDpq5jku7cnXSA9IGRhaWx5WydoaWdoJ10ucm91bmQoMikKICAgICAgICAgICAgZGFpbHlbJ+acgOS9juS7tyddID0gZGFpbHlbJ2xvdyddLnJvdW5kKDIpCiAgICAgICAgICAgIGRhaWx5WyfmlLbnm5jku7cnXSA9IGRhaWx5WydjbG9zZSddLnJvdW5kKDIpCiAgICAgICAgICAgIGRhaWx5Wyfmtqjot4zluYUoJSknXSA9IGRhaWx5WydwY3RfY2hnJ10ucm91bmQoMikKICAgICAgICAgICAgZGFpbHlbJ+aIkOS6pOminSjkur8pJ10gPSAoZGFpbHlbJ2Ftb3VudCddIC8gMTAwMDAwKS5yb3VuZCgyKQogICAgICAgICAgICAKICAgICAgICAgICAgZGlzcGxheV9jb2xzID0gWyfogqHnpajlkI3np7AnLCAn5byA55uY5Lu3JywgJ+acgOmrmOS7tycsICfmnIDkvY7ku7cnLCAn5pS255uY5Lu3JywgJ+a2qOi3jOW5hSglKScsICfmiJDkuqTpop0o5Lq/KSddCiAgICAgICAgICAgIHJlc3VsdF9kZiA9IGRhaWx5W2Rpc3BsYXlfY29sc10uc29ydF92YWx1ZXMoJ+a2qOi3jOW5hSglKScsIGFzY2VuZGluZz1GYWxzZSkKICAgICAgICAgICAgcHJpbnQoZiLkuqTmmJPml6U6IHt0cmFkZV9kYXRlfSIpCiAgICAgICAgICAgIHByaW50KHJlc3VsdF9kZi50b19zdHJpbmcoaW5kZXg9RmFsc2UpKQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIHByaW50KCLml6Dms5Xojrflj5booYzmg4XmlbDmja4iKQogICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgIHByaW50KGYi6I635Y+W6KGM5oOF5pWw5o2u5aSx6LSlOiB7ZX0iKQogICAgCiAgICAjIDMuIOiOt+WPluWIhue6ouaVsOaNrgogICAgcHJpbnQoIlxu44CQ5LiJ44CB5Y6G5Y+y5YiG57qi5oOF5Ya1ICjov5E15bm0KeOAkSIpCiAgICBwcmludCgiLSIgKiA4MCkKICAgIAogICAgdHJ5OgogICAgICAgICMg6I635Y+W5pyA6L+RNeW5tOeahOWIhue6ouaVsOaNrgogICAgICAgIGZvciB0c19jb2RlLCBuYW1lIGluIEJBTktfU1RPQ0tTLml0ZW1zKCk6CiAgICAgICAgICAgIHRyeToKICAgICAgICAgICAgICAgIGRpdmlkZW5kID0gcHJvLmRpdmlkZW5kKHRzX2NvZGU9dHNfY29kZSkKICAgICAgICAgICAgICAgIGlmIGRpdmlkZW5kIGlzIG5vdCBOb25lIGFuZCBsZW4oZGl2aWRlbmQpID4gMDoKICAgICAgICAgICAgICAgICAgICAjIOaMieW5tOW6puaOkuW6j++8jOWPluacgOi/kTXlubQKICAgICAgICAgICAgICAgICAgICBkaXZpZGVuZCA9IGRpdmlkZW5kLmhlYWQoNSkKICAgICAgICAgICAgICAgICAgICBwcmludChmIlxue25hbWV9ICh7dHNfY29kZX0pOiIpCiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgZm9yIF8sIHJvdyBpbiBkaXZpZGVuZC5pdGVycm93cygpOgogICAgICAgICAgICAgICAgICAgICAgICBlbmRfZGF0ZV9zdHIgPSByb3cuZ2V0KCdlbmRfZGF0ZScsICcnKQogICAgICAgICAgICAgICAgICAgICAgICBkaXZfdHlwZSA9IHJvdy5nZXQoJ2Rpdl9wcm9jJywgJycpCiAgICAgICAgICAgICAgICAgICAgICAgIGNhc2hfZGl2ID0gcm93LmdldCgnY2FzaF9kaXZfdGF4JywgMCkKICAgICAgICAgICAgICAgICAgICAgICAgc3RrX2RpdiA9IHJvdy5nZXQoJ3N0a19kaXYnLCAwKQogICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgaWYgcGQubm90bmEoY2FzaF9kaXYpIGFuZCBjYXNoX2RpdiA+IDA6CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcmludChmIiAge2VuZF9kYXRlX3N0cls6NF195bm05bqmOiDmr4/ogqHmtL7mga8ge2Nhc2hfZGl2Oi4zZn3lhYMiKQogICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICBwcmludChmIlxue25hbWV9ICh7dHNfY29kZX0pOiDmmoLml6DliIbnuqLmlbDmja4iKQogICAgICAgICAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgICAgICAgICBwcmludChmIlxue25hbWV9ICh7dHNfY29kZX0pOiDojrflj5bliIbnuqLmlbDmja7lpLHotKUgLSB7ZX0iKQogICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgIHByaW50KGYi6I635Y+W5YiG57qi5pWw5o2u5aSx6LSlOiB7ZX0iKQogICAgCiAgICAjIDQuIOiOt+WPluacgOaWsOi0ouWKoeaMh+aghwogICAgcHJpbnQoIlxu44CQ5Zub44CB5pyA5paw6LSi5Yqh5oyH5qCH44CRIikKICAgIHByaW50KCItIiAqIDgwKQogICAgCiAgICB0cnk6CiAgICAgICAgIyDojrflj5bmnIDmlrDmiqXlkYrmnJ8KICAgICAgICBjdXJyZW50X3llYXIgPSB0b2RheS55ZWFyCiAgICAgICAgIyDlsJ3or5Xojrflj5bmnIDmlrDlubTmiqXmiJbkuInlraPmiqUKICAgICAgICBwZXJpb2RzID0gW2Yne2N1cnJlbnRfeWVhci0xfTEyMzEnLCBmJ3tjdXJyZW50X3llYXJ9MDkzMCddCiAgICAgICAgCiAgICAgICAgZmluYV9kYXRhID0gW10KICAgICAgICBmb3IgdHNfY29kZSwgbmFtZSBpbiBCQU5LX1NUT0NLUy5pdGVtcygpOgogICAgICAgICAgICBmb3IgcGVyaW9kIGluIHBlcmlvZHM6CiAgICAgICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICAgICAgZmluYSA9IHByby5maW5hX2luZGljYXRvcih0c19jb2RlPXRzX2NvZGUsIHBlcmlvZD1wZXJpb2QpCiAgICAgICAgICAgICAgICAgICAgaWYgZmluYSBpcyBub3QgTm9uZSBhbmQgbGVuKGZpbmEpID4gMDoKICAgICAgICAgICAgICAgICAgICAgICAgcm93ID0gZmluYS5pbG9jWzBdCiAgICAgICAgICAgICAgICAgICAgICAgIGZpbmFfZGF0YS5hcHBlbmQoewogICAgICAgICAgICAgICAgICAgICAgICAgICAgJ+iCoeelqOWQjeensCc6IG5hbWUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAn5oql5ZGK5pyfJzogcGVyaW9kWzo0XSArICctJyArIHBlcmlvZFs0OjZdICsgJy0nICsgcGVyaW9kWzY6XSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICdST0UoJSknOiByb3VuZChyb3cuZ2V0KCdyb2UnLCAwKSBvciAwLCAyKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICdST0VfZGlsdXRlZCglKSc6IHJvdW5kKHJvdy5nZXQoJ3JvZV9kaWx1dGVkJywgMCkgb3IgMCwgMiksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAn5YeA5Yip546HKCUpJzogcm91bmQocm93LmdldCgnbmV0cHJvZml0X21hcmdpbicsIDApIG9yIDAsIDIpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgJ+i1hOS6p+i0n+WAuueOhyglKSc6IHJvdW5kKHJvdy5nZXQoJ2RlYnRfdG9fYXNzZXRzJywgMCkgb3IgMCwgMikKICAgICAgICAgICAgICAgICAgICAgICAgfSkKICAgICAgICAgICAgICAgICAgICAgICAgYnJlYWsKICAgICAgICAgICAgICAgIGV4Y2VwdDoKICAgICAgICAgICAgICAgICAgICBjb250aW51ZQogICAgICAgIAogICAgICAgIGlmIGZpbmFfZGF0YToKICAgICAgICAgICAgZmluYV9kZiA9IHBkLkRhdGFGcmFtZShmaW5hX2RhdGEpCiAgICAgICAgICAgIHByaW50KGZpbmFfZGYudG9fc3RyaW5nKGluZGV4PUZhbHNlKSkKICAgICAgICBlbHNlOgogICAgICAgICAgICBwcmludCgi5peg5rOV6I635Y+W6LSi5Yqh5oyH5qCH5pWw5o2uIikKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBwcmludChmIuiOt+WPlui0ouWKoeaMh+agh+Wksei0pToge2V9IikKICAgIAogICAgIyA1LiDojrflj5bku4rlubTku6XmnaXmtqjot4zluYUKICAgIHByaW50KCJcbuOAkOS6lOOAgeS7iuW5tOS7peadpea2qOi3jOW5heOAkSIpCiAgICBwcmludCgiLSIgKiA4MCkKICAgIAogICAgdHJ5OgogICAgICAgIHllYXJfc3RhcnQgPSBmInt0b2RheS55ZWFyfTAxMDEiCiAgICAgICAgeWVhcl9jaGFuZ2VfZGF0YSA9IFtdCiAgICAgICAgCiAgICAgICAgZm9yIHRzX2NvZGUsIG5hbWUgaW4gQkFOS19TVE9DS1MuaXRlbXMoKToKICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgIyDojrflj5blubTliJ3lkozmnIDmlrDku7fmoLwKICAgICAgICAgICAgICAgIHN0YXJ0X3ByaWNlID0gcHJvLmRhaWx5KHRzX2NvZGU9dHNfY29kZSwgc3RhcnRfZGF0ZT15ZWFyX3N0YXJ0LCBlbmRfZGF0ZT15ZWFyX3N0YXJ0KQogICAgICAgICAgICAgICAgbGF0ZXN0X3ByaWNlID0gcHJvLmRhaWx5KHRzX2NvZGU9dHNfY29kZSwgdHJhZGVfZGF0ZT10cmFkZV9kYXRlKQogICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICBpZiBzdGFydF9wcmljZSBpcyBub3QgTm9uZSBhbmQgbGVuKHN0YXJ0X3ByaWNlKSA+IDAgYW5kIGxhdGVzdF9wcmljZSBpcyBub3QgTm9uZSBhbmQgbGVuKGxhdGVzdF9wcmljZSkgPiAwOgogICAgICAgICAgICAgICAgICAgIHN0YXJ0X2Nsb3NlID0gc3RhcnRfcHJpY2UuaWxvY1swXVsnY2xvc2UnXQogICAgICAgICAgICAgICAgICAgIGxhdGVzdF9jbG9zZSA9IGxhdGVzdF9wcmljZS5pbG9jWzBdWydjbG9zZSddCiAgICAgICAgICAgICAgICAgICAgeXRkX2NoYW5nZSA9ICgobGF0ZXN0X2Nsb3NlIC0gc3RhcnRfY2xvc2UpIC8gc3RhcnRfY2xvc2UgKiAxMDApCiAgICAgICAgICAgICAgICAgICAgeWVhcl9jaGFuZ2VfZGF0YS5hcHBlbmQoewogICAgICAgICAgICAgICAgICAgICAgICAn6IKh56Wo5ZCN56ewJzogbmFtZSwKICAgICAgICAgICAgICAgICAgICAgICAgJ+W5tOWIneS7t+agvCc6IHJvdW5kKHN0YXJ0X2Nsb3NlLCAyKSwKICAgICAgICAgICAgICAgICAgICAgICAgJ+acgOaWsOS7t+agvCc6IHJvdW5kKGxhdGVzdF9jbG9zZSwgMiksCiAgICAgICAgICAgICAgICAgICAgICAgICflubTliJ3oh7Pku4rmtqjluYUoJSknOiByb3VuZCh5dGRfY2hhbmdlLCAyKQogICAgICAgICAgICAgICAgICAgIH0pCiAgICAgICAgICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgCiAgICAgICAgaWYgeWVhcl9jaGFuZ2VfZGF0YToKICAgICAgICAgICAgeXRkX2RmID0gcGQuRGF0YUZyYW1lKHllYXJfY2hhbmdlX2RhdGEpCiAgICAgICAgICAgIHl0ZF9kZiA9IHl0ZF9kZi5zb3J0X3ZhbHVlcygn5bm05Yid6Iez5LuK5rao5bmFKCUpJywgYXNjZW5kaW5nPUZhbHNlKQogICAgICAgICAgICBwcmludCh5dGRfZGYudG9fc3RyaW5nKGluZGV4PUZhbHNlKSkKICAgICAgICBlbHNlOgogICAgICAgICAgICBwcmludCgi5peg5rOV6I635Y+W5bm05bqm5rao6LeM5bmF5pWw5o2uIikKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBwcmludChmIuiOt+WPluW5tOW6pua2qOi3jOW5heWksei0pToge2V9IikKICAgIAogICAgcHJpbnQoIlxuIiArICI9IiAqIDgwKQogICAgcHJpbnQoIuaVsOaNruadpea6kDogVHVzaGFyZSBQcm8iKQogICAgcHJpbnQoIj0iICogODApCgpkZWYgbWFpbigpOgogICAgdHMgPSBjaGVja190dXNoYXJlKCkKICAgIHRva2VuID0gZ2V0X3Rva2VuKCkKICAgIAogICAgaWYgbm90IHRva2VuOgogICAgICAgIHByaW50KCLorablkYo6IOacquiuvue9riBUVVNIQVJFX1RPS0VOIOeOr+Wig+WPmOmHj++8jOS9v+eUqOWFjei0uemineW6piIpCiAgICBlbHNlOgogICAgICAgIHRzLnNldF90b2tlbih0b2tlbikKICAgIAogICAgYW5hbHl6ZV9iYW5rX3N0b2Nrcyh0cykKCmlmIF9fbmFtZV9fID09ICdfX21haW5fXyc6CiAgICBtYWluKCkK
+#!/usr/bin/env python3
+"""
+中国银行股分析报告
+分析主要国有大行的行情、估值和分红情况
+"""
+
+import sys
+import pandas as pd
+from datetime import datetime, timedelta
+
+# 主要国有银行股代码
+BANK_STOCKS = {
+    '601398.SH': '工商银行',
+    '601939.SH': '建设银行', 
+    '601288.SH': '农业银行',
+    '601988.SH': '中国银行',
+    '601328.SH': '交通银行',
+    '601658.SH': '邮储银行'
+}
+
+def check_tushare():
+    """检查 tushare 是否安装"""
+    try:
+        import tushare as ts
+        return ts
+    except ImportError:
+        print("请先安装 tushare: pip install tushare")
+        sys.exit(1)
+
+def get_token():
+    """获取 Tushare Token"""
+    import os
+    token = os.getenv('TUSHARE_TOKEN')
+    return token
+
+def analyze_bank_stocks(ts):
+    """分析银行股核心数据"""
+    pro = ts.pro_api()
+    
+    # 获取最近一个交易日
+    today = datetime.now()
+    end_date = today.strftime('%Y%m%d')
+    start_date = (today - timedelta(days=30)).strftime('%Y%m%d')
+    
+    # 获取最新每日指标数据
+    stock_codes = ','.join(BANK_STOCKS.keys())
+    
+    print("=" * 80)
+    print(f"中国银行股分析报告 - 数据日期: {today.strftime('%Y-%m-%d')}")
+    print("=" * 80)
+    
+    # 1. 获取最新估值指标
+    print("\n【一、最新估值指标】")
+    print("-" * 80)
+    
+    try:
+        daily_basic = pro.daily_basic(ts_code=stock_codes, trade_date='')
+        if daily_basic is not None and len(daily_basic) > 0:
+            # 获取最新日期
+            latest_date = daily_basic['trade_date'].max()
+            latest_data = daily_basic[daily_basic['trade_date'] == latest_date].copy()
+            
+            latest_data['股票名称'] = latest_data['ts_code'].map(BANK_STOCKS)
+            latest_data['收盘价'] = latest_data['close'].round(2)
+            latest_data['PE_TTM'] = latest_data['pe_ttm'].round(2)
+            latest_data['PB'] = latest_data['pb'].round(2)
+            latest_data['股息率(%)'] = latest_data['dv_ttm'].round(2)
+            latest_data['总市值(亿)'] = (latest_data['total_mv'] / 10000).round(2)
+            latest_data['流通市值(亿)'] = (latest_data['circ_mv'] / 10000).round(2)
+            
+            display_cols = ['股票名称', '收盘价', 'PE_TTM', 'PB', '股息率(%)', '总市值(亿)', '流通市值(亿)']
+            result_df = latest_data[display_cols].sort_values('总市值(亿)', ascending=False)
+            print(result_df.to_string(index=False))
+        else:
+            print("无法获取最新估值数据")
+    except Exception as e:
+        print(f"获取估值数据失败: {e}")
+    
+    # 2. 获取最新行情
+    print("\n【二、最新行情】")
+    print("-" * 80)
+    
+    try:
+        latest_trade = pro.trade_cal(exchange='SSE', start_date=end_date, end_date=end_date, is_open='1')
+        if len(latest_trade) > 0:
+            trade_date = latest_trade.iloc[0]['cal_date']
+        else:
+            # 往前找交易日
+            for i in range(1, 10):
+                check_date = (today - timedelta(days=i)).strftime('%Y%m%d')
+                latest_trade = pro.trade_cal(exchange='SSE', start_date=check_date, end_date=check_date, is_open='1')
+                if len(latest_trade) > 0:
+                    trade_date = check_date
+                    break
+        
+        daily = pro.daily(ts_code=stock_codes, trade_date=trade_date)
+        if daily is not None and len(daily) > 0:
+            daily['股票名称'] = daily['ts_code'].map(BANK_STOCKS)
+            daily['开盘价'] = daily['open'].round(2)
+            daily['最高价'] = daily['high'].round(2)
+            daily['最低价'] = daily['low'].round(2)
+            daily['收盘价'] = daily['close'].round(2)
+            daily['涨跌幅(%)'] = daily['pct_chg'].round(2)
+            daily['成交额(亿)'] = (daily['amount'] / 100000).round(2)
+            
+            display_cols = ['股票名称', '开盘价', '最高价', '最低价', '收盘价', '涨跌幅(%)', '成交额(亿)']
+            result_df = daily[display_cols].sort_values('涨跌幅(%)', ascending=False)
+            print(f"交易日: {trade_date}")
+            print(result_df.to_string(index=False))
+        else:
+            print("无法获取行情数据")
+    except Exception as e:
+        print(f"获取行情数据失败: {e}")
+    
+    # 3. 获取分红数据
+    print("\n【三、历史分红情况 (近5年)】")
+    print("-" * 80)
+    
+    try:
+        # 获取最近5年的分红数据
+        for ts_code, name in BANK_STOCKS.items():
+            try:
+                dividend = pro.dividend(ts_code=ts_code)
+                if dividend is not None and len(dividend) > 0:
+                    # 按年度排序，取最近5年
+                    dividend = dividend.head(5)
+                    print(f"\n{name} ({ts_code}):")
+                    
+                    for _, row in dividend.iterrows():
+                        end_date_str = row.get('end_date', '')
+                        div_type = row.get('div_proc', '')
+                        cash_div = row.get('cash_div_tax', 0)
+                        stk_div = row.get('stk_div', 0)
+                        
+                        if pd.notna(cash_div) and cash_div > 0:
+                            print(f"  {end_date_str[:4]}年度: 每股派息 {cash_div:.3f}元")
+                else:
+                    print(f"\n{name} ({ts_code}): 暂无分红数据")
+            except Exception as e:
+                print(f"\n{name} ({ts_code}): 获取分红数据失败 - {e}")
+    except Exception as e:
+        print(f"获取分红数据失败: {e}")
+    
+    # 4. 获取最新财务指标
+    print("\n【四、最新财务指标】")
+    print("-" * 80)
+    
+    try:
+        # 获取最新报告期
+        current_year = today.year
+        # 尝试获取最新年报或三季报
+        periods = [f'{current_year-1}1231', f'{current_year}0930']
+        
+        fina_data = []
+        for ts_code, name in BANK_STOCKS.items():
+            for period in periods:
+                try:
+                    fina = pro.fina_indicator(ts_code=ts_code, period=period)
+                    if fina is not None and len(fina) > 0:
+                        row = fina.iloc[0]
+                        fina_data.append({
+                            '股票名称': name,
+                            '报告期': period[:4] + '-' + period[4:6] + '-' + period[6:],
+                            'ROE(%)': round(row.get('roe', 0) or 0, 2),
+                            'ROE_diluted(%)': round(row.get('roe_diluted', 0) or 0, 2),
+                            '净利率(%)': round(row.get('netprofit_margin', 0) or 0, 2),
+                            '资产负债率(%)': round(row.get('debt_to_assets', 0) or 0, 2)
+                        })
+                        break
+                except:
+                    continue
+        
+        if fina_data:
+            fina_df = pd.DataFrame(fina_data)
+            print(fina_df.to_string(index=False))
+        else:
+            print("无法获取财务指标数据")
+    except Exception as e:
+        print(f"获取财务指标失败: {e}")
+    
+    # 5. 获取今年以来涨跌幅
+    print("\n【五、今年以来涨跌幅】")
+    print("-" * 80)
+    
+    try:
+        year_start = f"{today.year}0101"
+        year_change_data = []
+        
+        for ts_code, name in BANK_STOCKS.items():
+            try:
+                # 获取年初和最新价格
+                start_price = pro.daily(ts_code=ts_code, start_date=year_start, end_date=year_start)
+                latest_price = pro.daily(ts_code=ts_code, trade_date=trade_date)
+                
+                if start_price is not None and len(start_price) > 0 and latest_price is not None and len(latest_price) > 0:
+                    start_close = start_price.iloc[0]['close']
+                    latest_close = latest_price.iloc[0]['close']
+                    ytd_change = ((latest_close - start_close) / start_close * 100)
+                    year_change_data.append({
+                        '股票名称': name,
+                        '年初价格': round(start_close, 2),
+                        '最新价格': round(latest_close, 2),
+                        '年初至今涨幅(%)': round(ytd_change, 2)
+                    })
+            except Exception as e:
+                continue
+        
+        if year_change_data:
+            ytd_df = pd.DataFrame(year_change_data)
+            ytd_df = ytd_df.sort_values('年初至今涨幅(%)', ascending=False)
+            print(ytd_df.to_string(index=False))
+        else:
+            print("无法获取年度涨跌幅数据")
+    except Exception as e:
+        print(f"获取年度涨跌幅失败: {e}")
+    
+    print("\n" + "=" * 80)
+    print("数据来源: Tushare Pro")
+    print("=" * 80)
+
+def main():
+    ts = check_tushare()
+    token = get_token()
+    
+    if not token:
+        print("警告: 未设置 TUSHARE_TOKEN 环境变量，使用免费额度")
+    else:
+        ts.set_token(token)
+    
+    analyze_bank_stocks(ts)
+
+if __name__ == '__main__':
+    main()
