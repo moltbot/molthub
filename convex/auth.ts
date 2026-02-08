@@ -8,10 +8,8 @@ export const BANNED_REAUTH_MESSAGE = 'Your account has been suspended.'
 
 export async function handleSoftDeletedUserReauth(
   ctx: GenericMutationCtx<DataModel>,
-  args: { userId: Id<'users'>; existingUserId: Id<'users'> | null },
+  args: { userId: Id<'users'> },
 ) {
-  if (!args.existingUserId) return
-
   const user = await ctx.db.get(args.userId)
   if (!user?.deletedAt) return
 
