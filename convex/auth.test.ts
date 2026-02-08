@@ -29,12 +29,13 @@ function makeCtx({
 describe('handleSoftDeletedUserReauth', () => {
   const userId = 'users:1' as Id<'users'>
 
-  it('skips when no existing user', async () => {
+  it('skips when user not found', async () => {
     const { ctx } = makeCtx({ user: null })
 
-    await handleSoftDeletedUserReauth(ctx as never, { userId, existingUserId: null })
+    await handleSoftDeletedUserReauth(ctx as never, { userId, existingUserId: userId })
 
-    expect(ctx.db.get).not.toHaveBeenCalled()
+    expect(ctx.db.get).toHaveBeenCalledWith(userId)
+    expect(ctx.db.query).not.toHaveBeenCalled()
   })
 
   it('skips active users', async () => {

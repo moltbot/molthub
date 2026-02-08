@@ -10,10 +10,13 @@ export async function handleSoftDeletedUserReauth(
   ctx: GenericMutationCtx<DataModel>,
   args: { userId: Id<'users'>; existingUserId: Id<'users'> | null },
 ) {
-  if (!args.existingUserId) return
-
   const user = await ctx.db.get(args.userId)
   if (!user?.deletedAt) return
+
+  // Verify that the incoming identity matches the soft-deleted user to prevent bypass.
+  if (args.existingUserId && args.existingUserId !== args.userId) {
+    return
+  }
 
   const userId = args.userId
   const banRecord = await ctx.db
